@@ -24,7 +24,7 @@ export const getBusinessInsights = async (stocks: StockItem[], transactions: Tra
      return getRandomTips(3);
   }
 
-  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
+  const ai = new GoogleGenAI({ apiKey: ! import.meta.env.VITE_API_KEY });
   
   // Optimize payload: Convert to simple strings to avoid complex JSON nesting issues and reduce token count
   const stockSummary = stocks.slice(0, 10).map(s => { 
