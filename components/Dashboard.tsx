@@ -9,8 +9,14 @@ const Dashboard: React.FC<{ stocks: StockItem[]; transactions: Transaction[]; la
   const [tips, setTips] = useState<string[]>([]);
   const [loadingTips, setLoadingTips] = useState(false);
   
-  // Check if API Key exists
-  const hasApiKey = !!process.env.API_KEY;
+  // Safely check if API Key exists without crashing if 'process' is undefined
+  const hasApiKey = (() => {
+    try {
+      return typeof process !== 'undefined' && process.env && !!process.env.API_KEY;
+    } catch {
+      return false;
+    }
+  })();
 
   const t = TRANSLATIONS[language];
 

@@ -54,7 +54,12 @@ export const TRANSLATIONS = {
     transactions: 'பரிவர்த்தனைகள்',
     receivable: 'நமக்கு வரவேண்டியது',
     payable: 'நாம் தரவேண்டியது',
-    netBalance: 'மொத்த கணக்கு'
+    netBalance: 'மொத்த கணக்கு',
+    forgotPassword: 'கடவுச்சொல் மறந்துவிட்டதா?',
+    resetPassword: 'கடவுச்சொல் மீட்டெடுப்பு',
+    sendResetLink: 'லிங்க் அனுப்புக',
+    backToLogin: 'திரும்ப செல்ல',
+    resetLinkSent: 'கடவுச்சொல் மீட்டெடுப்பு லிங்க் மின்னஞ்சலுக்கு அனுப்பப்பட்டது.'
   },
   en: {
     appName: 'Viyabaari',
@@ -108,7 +113,12 @@ export const TRANSLATIONS = {
     transactions: 'Transactions',
     receivable: 'Receivable',
     payable: 'Payable',
-    netBalance: 'Net Balance'
+    netBalance: 'Net Balance',
+    forgotPassword: 'Forgot Password?',
+    resetPassword: 'Reset Password',
+    sendResetLink: 'Send Reset Link',
+    backToLogin: 'Back to Login',
+    resetLinkSent: 'Password reset link sent to your email.'
   }
 };
 

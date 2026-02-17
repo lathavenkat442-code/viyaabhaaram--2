@@ -15,6 +15,13 @@
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3045/3045388.png">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3045/3045388.png">
     
+    <script>
+      // Polyfill process for browser environment to prevent 'process is not defined' errors
+      if (typeof process === 'undefined') {
+        window.process = { env: {} };
+      }
+    </script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Mukta+Malar:wght@300;400;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>

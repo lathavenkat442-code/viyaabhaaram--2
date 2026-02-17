@@ -26,12 +26,22 @@ const getRandomTips = (count: number) => {
 };
 
 export const getBusinessInsights = async (stocks: StockItem[], transactions: Transaction[]) => {
+  // Safe accessor for API Key
+  let apiKey = '';
+  try {
+    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+      apiKey = process.env.API_KEY;
+    }
+  } catch (e) {
+    // process is not defined, ignore
+  }
+
   // Return fallbacks if no API key is set
-  if (!process.env.API_KEY) {
+  if (!apiKey) {
      return getRandomTips(3);
   }
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey });
   
   // Optimize payload: Convert to simple strings to avoid complex JSON nesting issues and reduce token count
   const stockSummary = stocks.slice(0, 10).map(s => { 
