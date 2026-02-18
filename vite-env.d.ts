@@ -1,12 +1,5 @@
 // Manually define types to avoid missing vite/client error
 
-declare var process: {
-  env: {
-    API_KEY: string;
-    [key: string]: any;
-  }
-};
-
 interface Window {
   process: any;
 }
