@@ -29,48 +29,35 @@ const getRandomTips = (count: number) => {
 };
 
 export const getBusinessInsights = async (stocks: StockItem[], transactions: Transaction[]) => {
-  // Safe accessor for API Key
-  let apiKey = '';
   try {
-    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
-      apiKey = process.env.API_KEY;
-    }
-  } catch (e) {
-    // process is not defined, ignore
-  }
-
-  // Return fallbacks if no API key is set
-  if (!apiKey) {
-     return getRandomTips(3);
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
+    // Guidelines: API Key must be obtained exclusively from process.env.API_KEY
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  // Optimize payload: Convert to simple strings to avoid complex JSON nesting issues and reduce token count
-  const stockSummary = stocks.slice(0, 10).map(s => { 
-    const qty = s.variants 
-      ? s.variants.reduce((acc, v) => acc + v.sizeStocks.reduce((sum, ss) => sum + ss.quantity, 0), 0)
-      : 0;
-    return `${s.name}: ${qty}`;
-  }).join(', ');
-  
-  const txnSummary = transactions.slice(-10).map(t => 
-    `${t.type} ${t.amount} for ${t.category}`
-  ).join(', ');
-
-  // Simplified Prompt
-  const prompt = `
-    As a business analyst, provide 3 short, actionable tips in Tamil based on this data.
-    Stocks: [${stockSummary}]
-    Transactions: [${txnSummary}]
+    // Optimize payload: Convert to simple strings to avoid complex JSON nesting issues and reduce token count
+    const stockSummary = stocks.slice(0, 10).map(s => { 
+      const qty = s.variants 
+        ? s.variants.reduce((acc, v) => acc + v.sizeStocks.reduce((sum, ss) => sum + ss.quantity, 0), 0)
+        : 0;
+      return `${s.name}: ${qty}`;
+    }).join(', ');
     
-    Focus on inventory management and cash flow.
-  `;
+    const txnSummary = transactions.slice(-10).map(t => 
+      `${t.type} ${t.amount} for ${t.category}`
+    ).join(', ');
 
-  try {
+    // Simplified Prompt
+    const prompt = `
+      As a business analyst, provide 3 short, actionable tips in Tamil based on this data.
+      Stocks: [${stockSummary}]
+      Transactions: [${txnSummary}]
+      
+      Focus on inventory management and cash flow.
+    `;
+
+    // Guidelines: Use 'contents' as a simple string for text prompts
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      contents: prompt,
       config: {
         responseMimeType: 'application/json',
         responseSchema: {

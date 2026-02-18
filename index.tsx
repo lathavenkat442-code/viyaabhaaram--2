@@ -9,12 +9,15 @@ if (!rootElement) {
 }
 
 // Service Worker Registration for Android Installation
-if ('serviceWorker' in navigator) {
+// Safe cast 'navigator' to allow access to serviceWorker if TS lib is restrictive
+const nav = navigator as any;
+
+if ('serviceWorker' in nav) {
   window.addEventListener('load', () => {
     // Attempt to register service worker with a relative path
-    navigator.serviceWorker.register('./sw.js')
-      .then(reg => console.log('Service worker registered!', reg))
-      .catch(err => {
+    nav.serviceWorker.register('./sw.js')
+      .then((reg: any) => console.log('Service worker registered!', reg))
+      .catch((err: any) => {
         // Suppress specific origin errors common in preview environments
         if (err.message && err.message.includes('origin')) {
           console.warn('Service Worker skipped due to origin mismatch (Preview Mode)');
