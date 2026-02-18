@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { StockItem, Transaction } from '../types';
+import { StockItem, Transaction, User } from '../types';
 import { TRANSLATIONS } from '../constants';
-import { TrendingUp, TrendingDown, Package, Sparkles, Lightbulb } from 'lucide-react';
+import { TrendingUp, TrendingDown, Package, Sparkles, Lightbulb, CloudOff, Database, ChevronRight } from 'lucide-react';
 import { getBusinessInsights } from '../services/geminiService';
+import { isSupabaseConfigured } from '../supabaseClient';
 
-const Dashboard: React.FC<{ stocks: StockItem[]; transactions: Transaction[]; language: 'ta' | 'en' }> = ({ stocks, transactions, language }) => {
+const Dashboard: React.FC<{ stocks: StockItem[]; transactions: Transaction[]; language: 'ta' | 'en'; user: User; onSetupServer: () => void }> = ({ stocks, transactions, language, user, onSetupServer }) => {
   const [tips, setTips] = useState<string[]>([]);
   const [loadingTips, setLoadingTips] = useState(false);
   
@@ -74,8 +75,33 @@ const Dashboard: React.FC<{ stocks: StockItem[]; transactions: Transaction[]; la
     return () => clearTimeout(timer);
   }, [stocks.length, transactions.length]); 
 
+  const isGuestOrOffline = !isSupabaseConfigured || user.email.includes('guest') || !user.uid;
+
   return (
     <div className="p-4 space-y-6">
+      {/* Offline/Guest Warning Banner */}
+      {isGuestOrOffline && (
+        <div 
+            onClick={onSetupServer}
+            className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between cursor-pointer active:scale-[0.98] transition shadow-sm animate-in slide-in-from-top"
+        >
+            <div className="flex items-center gap-3">
+                <div className="bg-amber-100 p-2 rounded-full text-amber-600">
+                    <Database size={20} />
+                </div>
+                <div>
+                    <h3 className="font-bold text-amber-900 text-sm tamil-font">
+                        {language === 'ta' ? 'ஆன்லைன் அக்கவுண்ட் இணைக்க' : 'Connect Online Database'}
+                    </h3>
+                    <p className="text-[10px] text-amber-600 font-medium">
+                        {language === 'ta' ? 'தரவுகளை ஆன்லைனில் சேமிக்க கிளிக் செய்யவும்' : 'Click to sync data online'}
+                    </p>
+                </div>
+            </div>
+            <ChevronRight size={18} className="text-amber-400" />
+        </div>
+      )}
+
       <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-3xl p-6 text-white shadow-lg">
         <p className="text-indigo-100 text-sm tamil-font">{t.totalBalance}</p>
         <h2 className="text-4xl font-bold mt-1">₹{(totalIncome - totalExpense).toLocaleString()}</h2>

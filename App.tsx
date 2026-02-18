@@ -42,7 +42,8 @@ import {
   RefreshCw,
   KeyRound,
   Database,
-  Settings
+  Settings,
+  CloudUpload
 } from 'lucide-react';
 
 // Unified Security Action State
@@ -53,6 +54,62 @@ interface SecurityAction {
 }
 
 const EXPENSE_CATEGORIES = ['Salary', 'Rent', 'Tea/Snacks', 'Transport', 'Purchase', 'Sales', 'Electricity', 'Maintenance', 'Others'];
+
+const DatabaseConfigModal: React.FC<{ onClose: () => void; language: 'ta' | 'en' }> = ({ onClose, language }) => {
+    const [setupUrl, setSetupUrl] = useState(localStorage.getItem('viyabaari_supabase_url') || '');
+    const [setupKey, setSetupKey] = useState(localStorage.getItem('viyabaari_supabase_key') || '');
+    
+    const handleSaveConfig = (e: React.FormEvent) => {
+        e.preventDefault();
+        saveSupabaseConfig(setupUrl, setupKey);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/70 z-[70] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
+             <div className="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-2xl relative">
+                <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-gray-100 rounded-full hover:bg-gray-200">
+                    <X size={20} />
+                </button>
+                <div className="text-center mb-6">
+                    <Database size={48} className="mx-auto text-indigo-600 mb-2"/>
+                    <h2 className="text-xl font-black text-gray-800 tamil-font">
+                        {language === 'ta' ? 'கிளவுட் டேட்டாபேஸ் செட்டிங்ஸ்' : 'Setup Cloud Database'}
+                    </h2>
+                    <p className="text-xs text-gray-500 tamil-font mt-2">
+                        {language === 'ta' ? 'ஆன்லைன் சிங்க் வசதியை பெற Supabase விவரங்களை உள்ளிடவும்.' : 'Enter Supabase Credentials to enable online sync.'}
+                    </p>
+                </div>
+                
+                <form onSubmit={handleSaveConfig} className="space-y-4">
+                    <div>
+                        <label className="text-xs font-bold text-gray-400 uppercase">Supabase URL</label>
+                        <input 
+                            value={setupUrl} 
+                            onChange={e => setSetupUrl(e.target.value)} 
+                            className="w-full bg-gray-100 p-3 rounded-xl font-mono text-sm border focus:border-indigo-500 outline-none text-gray-800" 
+                            placeholder="https://xyz.supabase.co"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="text-xs font-bold text-gray-400 uppercase">Anon Key</label>
+                        <input 
+                            value={setupKey} 
+                            onChange={e => setSetupKey(e.target.value)} 
+                            className="w-full bg-gray-100 p-3 rounded-xl font-mono text-sm border focus:border-indigo-500 outline-none text-gray-800" 
+                            placeholder="eyJhbGciOiJIUzI1NiIsIn..."
+                            required
+                        />
+                    </div>
+                    
+                    <button type="submit" className="w-full bg-indigo-600 text-white p-3 rounded-xl font-bold shadow-lg hover:bg-indigo-700 tamil-font mt-2">
+                        {language === 'ta' ? 'சேமித்து இணைக்க' : 'Save & Connect'}
+                    </button>
+                </form>
+             </div>
+        </div>
+    );
+};
 
 const AddTransactionModal: React.FC<{
   onSave: (txn: Omit<Transaction, 'id' | 'date'>, id?: string, date?: number) => void;
@@ -200,6 +257,8 @@ const AddTransactionModal: React.FC<{
     </div>
   );
 };
+
+// ... [AddStockModal component remains unchanged, assuming it's correctly placed here in real file] ...
 
 const AddStockModal: React.FC<{
   onSave: (item: any, id?: string) => void;
@@ -607,6 +666,9 @@ const App: React.FC = () => {
   // Security / OTP Modal State
   const [securityAction, setSecurityAction] = useState<SecurityAction | null>(null);
   const [securityOtp, setSecurityOtp] = useState<string>('');
+  
+  // Database Config Modal
+  const [showDatabaseConfig, setShowDatabaseConfig] = useState(false);
   
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
@@ -1070,7 +1132,7 @@ const App: React.FC = () => {
                         className="hover:bg-indigo-500 p-1 rounded-full transition"
                         title={language === 'ta' ? 'ஆன்லைனில் ஏற்று (Push)' : 'Push to Server'}
                      >
-                         <UploadCloud size={22} />
+                         <CloudUpload size={22} />
                      </button>
                 )}
                 
@@ -1085,7 +1147,15 @@ const App: React.FC = () => {
       </header>
 
       <main className="flex-1 overflow-y-auto pb-24">
-        {activeTab === 'dashboard' && <Dashboard stocks={stocks} transactions={transactions} language={language} />}
+        {activeTab === 'dashboard' && 
+            <Dashboard 
+                stocks={stocks} 
+                transactions={transactions} 
+                language={language} 
+                user={user} 
+                onSetupServer={() => setShowDatabaseConfig(true)}
+            />
+        }
         {activeTab === 'stock' && <Inventory stocks={stocks} onDelete={initiateDeleteStock} onEdit={(item) => { setEditingStock(item); setIsAddingStock(true); }} language={language} />}
         {activeTab === 'accounts' && 
             <Accounting 
@@ -1107,6 +1177,7 @@ const App: React.FC = () => {
             onLanguageChange={toggleLanguage}
             onClearTransactions={initiateClearTransactions}
             onResetApp={initiateResetApp}
+            onSetupServer={() => setShowDatabaseConfig(true)}
           />
         }
       </main>
@@ -1124,6 +1195,7 @@ const App: React.FC = () => {
       )}
 
       {/* Modals */}
+      {showDatabaseConfig && <DatabaseConfigModal onClose={() => setShowDatabaseConfig(false)} language={language} />}
       {isAddingStock && <AddStockModal onSave={saveStock} onClose={() => { setIsAddingStock(false); setEditingStock(null); }} initialData={editingStock || undefined} language={language} t={t} />}
       {isAddingTransaction && (
           <AddTransactionModal 
@@ -1244,7 +1316,7 @@ const AuthScreen: React.FC<{ onLogin: (u: User) => void; onRestore: (d: any) => 
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     
-    // Manual Config State
+    // Manual Config State (kept for initial login flow if needed, but redundant with global modal now)
     const [showSetup, setShowSetup] = useState(false);
     const [setupUrl, setSetupUrl] = useState('');
     const [setupKey, setSetupKey] = useState('');

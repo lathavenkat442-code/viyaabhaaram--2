@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'viyabaari-v9-stable';
+const CACHE_NAME = 'viyabaari-v7-force-refresh';
 const CORE_ASSETS = [
   './',
   './index.html',

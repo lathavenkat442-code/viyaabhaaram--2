@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
 import { User, StockItem, Transaction, BackupFrequency } from '../types';
-import { LogOut, ShieldCheck, Download, FileSpreadsheet, HardDriveDownload, Globe, CheckCircle2, UploadCloud, Save, Cloud, Calendar, History, Settings, ToggleLeft, ToggleRight, Image, User as UserIcon, X, AlertTriangle, Eraser, Trash2, ChevronDown } from 'lucide-react';
+import { LogOut, ShieldCheck, Download, FileSpreadsheet, HardDriveDownload, Globe, CheckCircle2, UploadCloud, Save, Cloud, Calendar, History, Settings, ToggleLeft, ToggleRight, Image, User as UserIcon, X, AlertTriangle, Eraser, Trash2, ChevronDown, Database, Wifi, WifiOff } from 'lucide-react';
+import { isSupabaseConfigured } from '../supabaseClient';
 
 interface ProfileProps {
   user: User;
@@ -14,9 +15,10 @@ interface ProfileProps {
   onLanguageChange: (lang: 'ta' | 'en') => void;
   onClearTransactions: () => void;
   onResetApp: () => void;
+  onSetupServer: () => void; // New prop for triggering setup
 }
 
-const Profile: React.FC<ProfileProps> = ({ user, updateUser, stocks, transactions, onLogout, onRestore, language, onLanguageChange, onClearTransactions, onResetApp }) => {
+const Profile: React.FC<ProfileProps> = ({ user, updateUser, stocks, transactions, onLogout, onRestore, language, onLanguageChange, onClearTransactions, onResetApp, onSetupServer }) => {
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [tempAccountInput, setTempAccountInput] = useState('');
@@ -183,6 +185,34 @@ const Profile: React.FC<ProfileProps> = ({ user, updateUser, stocks, transaction
       </div>
 
       <div className="space-y-4">
+        {/* Supabase / Cloud Configuration */}
+        <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 space-y-4">
+          <div className="flex items-center gap-3 px-1">
+             <div className={`p-2 rounded-xl ${isSupabaseConfigured ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>
+                <Database size={22} />
+             </div>
+             <div>
+                <h3 className="font-black text-lg tamil-font text-gray-800">
+                  {language === 'ta' ? 'ஆன்லைன் டேட்டாபேஸ்' : 'Cloud Database'}
+                </h3>
+                <p className={`text-[10px] font-bold ${isSupabaseConfigured ? 'text-green-500' : 'text-amber-500'}`}>
+                   {isSupabaseConfigured 
+                      ? (language === 'ta' ? 'இணைக்கப்பட்டுள்ளது (Supabase)' : 'Connected to Supabase')
+                      : (language === 'ta' ? 'இணைக்கப்படவில்லை (Offline)' : 'Not Connected (Offline Mode)')
+                   }
+                </p>
+             </div>
+          </div>
+          
+          <button 
+             onClick={onSetupServer}
+             className="w-full py-4 bg-gray-50 text-indigo-600 rounded-xl font-black text-sm border border-gray-200 hover:bg-indigo-50 hover:border-indigo-100 transition flex items-center justify-center gap-2"
+          >
+             <Settings size={16} />
+             {language === 'ta' ? 'அமைப்புகளை மாற்ற (Configure)' : 'Configure Settings'}
+          </button>
+        </div>
+
         {/* Language Selection */}
         <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 space-y-4">
           <div className="flex items-center gap-3 px-1">
