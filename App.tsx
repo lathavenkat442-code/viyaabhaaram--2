@@ -41,7 +41,6 @@ import {
   Loader2,
   RefreshCw,
   KeyRound,
-  CloudUpload,
   Database,
   Settings
 } from 'lucide-react';
@@ -1071,7 +1070,7 @@ const App: React.FC = () => {
                         className="hover:bg-indigo-500 p-1 rounded-full transition"
                         title={language === 'ta' ? 'ஆன்லைனில் ஏற்று (Push)' : 'Push to Server'}
                      >
-                         <CloudUpload size={22} />
+                         <UploadCloud size={22} />
                      </button>
                 )}
                 
