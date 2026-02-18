@@ -1297,7 +1297,7 @@ const AuthScreen: React.FC<{ onLogin: (u: User) => void; onRestore: (d: any) => 
             name: 'Guest User',
             mobile: '0000000000',
             isLoggedIn: true,
-            password: ''
+            // Password field removed for security
         };
         onLogin(guestUser);
     };

@@ -53,7 +53,7 @@ export interface User {
   name: string;
   mobile?: string; // Added mobile number
   isLoggedIn: boolean;
-  password?: string;
+  // Removed password field for security. Passwords should never be stored in frontend state/types.
   lastBackupDate?: number;
   backupFrequency?: BackupFrequency;
   backupEmail?: string;
