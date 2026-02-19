@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { StockItem, Transaction, User, TransactionType, SizeStock, StockVariant, StockHistory } from './types';
+import { StockItem, Transaction, User, TransactionType, SizeStock, StockVariant } from './types';
 import { TRANSLATIONS, CATEGORIES, PREDEFINED_COLORS, SHIRT_SIZES } from './constants';
 import Dashboard from './components/Dashboard';
 import Inventory from './components/Inventory';
@@ -8,17 +8,12 @@ import Accounting from './components/Accounting';
 import Profile from './components/Profile';
 import { supabase, isSupabaseConfigured, saveSupabaseConfig } from './supabaseClient';
 import { 
-  LayoutDashboard, Package, ArrowLeftRight, User as UserIcon, PlusCircle, X, Camera, Trash2, Mail, User as UserSimple, DownloadCloud, Eye, EyeOff, UserPlus, LogIn, UploadCloud, Check, Phone, ShieldCheck, AlertCircle, ChevronRight, UserX, Palette, ChevronDown, AlertTriangle, Users, Wifi, WifiOff, Loader2, RefreshCw, KeyRound, Database, Settings, CloudUpload, CheckCircle2
+  LayoutDashboard, Package, ArrowLeftRight, User as UserIcon, PlusCircle, X, Camera, Trash2, Mail, DownloadCloud, Eye, EyeOff, LogIn, UploadCloud, Check, Phone, ShieldCheck, AlertCircle, ChevronRight, UserX, Palette, ChevronDown, AlertTriangle, WifiOff, Loader2, RefreshCw, Database, CloudUpload, CheckCircle2
 } from 'lucide-react';
-
-type SecurityActionType = 'DELETE_STOCK' | 'CLEAR_TXNS' | 'RESET_APP';
-interface SecurityAction {
-  type: SecurityActionType;
-  payload?: any; 
-}
 
 const EXPENSE_CATEGORIES = ['Salary', 'Rent', 'Tea/Snacks', 'Transport', 'Purchase', 'Sales', 'Electricity', 'Maintenance', 'Others'];
 
+// Global Toast Component
 const Toast: React.FC<{ message: string; show: boolean; onClose: () => void }> = ({ message, show, onClose }) => {
     useEffect(() => {
         if (show) {
@@ -37,6 +32,7 @@ const Toast: React.FC<{ message: string; show: boolean; onClose: () => void }> =
     );
 };
 
+// Database Config Modal
 const DatabaseConfigModal: React.FC<{ onClose: () => void; language: 'ta' | 'en' }> = ({ onClose, language }) => {
     const [setupUrl, setSetupUrl] = useState(localStorage.getItem('viyabaari_supabase_url') || '');
     const [setupKey, setSetupKey] = useState(localStorage.getItem('viyabaari_supabase_key') || '');
@@ -63,6 +59,7 @@ const DatabaseConfigModal: React.FC<{ onClose: () => void; language: 'ta' | 'en'
     );
 };
 
+// Full Transaction Modal
 const AddTransactionModal: React.FC<{ onSave: (txn: Omit<Transaction, 'id' | 'date'>, id?: string, date?: number) => void; onClose: () => void; initialData?: Transaction; language: 'ta' | 'en'; t: any; }> = ({ onSave, onClose, initialData, language, t }) => {
   const [type, setType] = useState<TransactionType>(initialData?.type || 'EXPENSE');
   const [amount, setAmount] = useState(initialData?.amount?.toString() || '');
@@ -89,7 +86,7 @@ const AddTransactionModal: React.FC<{ onSave: (txn: Omit<Transaction, 'id' | 'da
           <div className="relative">
              <input value={category} onChange={e => setCategory(e.target.value)} onFocus={() => setShowCategoryDropdown(true)} className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none border focus:ring-2 focus:ring-indigo-100" placeholder={t.category} required />
              {showCategoryDropdown && (
-                <div className="absolute z-50 top-full left-0 w-full mt-2 bg-white border rounded-2xl shadow-xl max-h-48 overflow-y-auto">
+                <div className="absolute z-50 bottom-full mb-2 left-0 w-full bg-white border rounded-2xl shadow-xl max-h-48 overflow-y-auto">
                     {EXPENSE_CATEGORIES.map(c => <div key={c} onClick={() => { setCategory(c); setShowCategoryDropdown(false); }} className="p-3 hover:bg-indigo-50 cursor-pointer font-bold text-gray-700 text-sm">{c}</div>)}
                 </div>
              )}
@@ -103,6 +100,7 @@ const AddTransactionModal: React.FC<{ onSave: (txn: Omit<Transaction, 'id' | 'da
   );
 };
 
+// Full Stock Modal with Image, Color, Sleeve, Size & +/- Buttons
 const AddStockModal: React.FC<{ onSave: (item: any, id?: string) => void; onClose: () => void; initialData?: StockItem; language: 'ta' | 'en'; t: any; }> = ({ onSave, onClose, initialData, language, t }) => {
   const [name, setName] = useState(initialData?.name || '');
   const [price, setPrice] = useState(initialData?.price.toString() || '');
@@ -141,18 +139,27 @@ const AddStockModal: React.FC<{ onSave: (item: any, id?: string) => void; onClos
           <button onClick={onClose} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200"><X size={20} /></button>
         </div>
         <form onSubmit={(e) => { e.preventDefault(); onSave({ name, price: parseFloat(price), category, variants }, initialData?.id); }} className="space-y-4">
-          <input value={name} onChange={e => setName(e.target.value)} className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none border focus:ring-2 focus:ring-indigo-100" placeholder={t.itemName} required />
+          <div>
+            <label className="text-xs font-bold text-gray-400 uppercase ml-1 mb-1 block">{t.itemName}</label>
+            <input value={name} onChange={e => setName(e.target.value)} className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none border focus:ring-2 focus:ring-indigo-100" placeholder={t.itemName} required />
+          </div>
           <div className="grid grid-cols-2 gap-2">
-            <input type="number" value={price} onChange={e => setPrice(e.target.value)} className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none border focus:ring-2 focus:ring-indigo-100" placeholder="₹ Price" required />
-            <input value={category} onChange={e => setCategory(e.target.value)} className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none border focus:ring-2 focus:ring-indigo-100" placeholder={t.category} required />
+            <div>
+              <label className="text-xs font-bold text-gray-400 uppercase ml-1 mb-1 block">{t.price}</label>
+              <input type="number" value={price} onChange={e => setPrice(e.target.value)} className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none border focus:ring-2 focus:ring-indigo-100" placeholder="₹ 0" required />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-400 uppercase ml-1 mb-1 block">{t.category}</label>
+              <input value={category} onChange={e => setCategory(e.target.value)} className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none border focus:ring-2 focus:ring-indigo-100" placeholder="Select" required />
+            </div>
           </div>
           
           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-bold text-sm text-gray-700 flex items-center gap-2"><Palette size={16} /> Variants</h3>
-                <button type="button" onClick={() => setVariants([...variants, { id: Date.now().toString(), imageUrl: '', sizeStocks: [{ size: 'General', quantity: 0, color: '', sleeve: '' }] }])} className="text-indigo-600 text-xs font-black bg-indigo-50 px-3 py-1.5 rounded-lg">+ {language === 'ta' ? 'புதிய வகை' : 'Add New'}</button>
+                <h3 className="font-bold text-sm text-gray-700 flex items-center gap-2"><Palette size={16} /> {language === 'ta' ? 'வகைகள் (Variants)' : 'Variants'}</h3>
+                <button type="button" onClick={() => setVariants([...variants, { id: Date.now().toString(), imageUrl: '', sizeStocks: [{ size: 'General', quantity: 0, color: '', sleeve: '' }] }])} className="text-indigo-600 text-xs font-black bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100">+ {language === 'ta' ? 'புதிய வகை' : 'Add New'}</button>
              </div>
-             <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
+             <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
                  {variants.map((v, idx) => (
                      <button key={idx} type="button" onClick={() => setActiveVariantIndex(idx)} className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center border-2 transition ${activeVariantIndex === idx ? 'border-indigo-500 bg-white ring-2 ring-indigo-100' : 'border-gray-200 bg-gray-100'}`}>
                          {v.imageUrl ? <img src={v.imageUrl} className="w-full h-full object-cover rounded-lg" alt="" /> : <span className="text-xs font-bold text-gray-400">#{idx + 1}</span>}
@@ -166,15 +173,15 @@ const AddStockModal: React.FC<{ onSave: (item: any, id?: string) => void; onClos
                         <><img src={currentVariant.imageUrl} className="w-full h-full object-contain" alt="" />
                         <button type="button" onClick={() => { const v = [...variants]; v[activeVariantIndex].imageUrl = ''; setVariants(v); }} className="absolute top-2 right-2 bg-black/50 text-white p-2 rounded-full"><Trash2 size={16} /></button></>
                       ) : (
-                        <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer"><Camera size={24} className="text-gray-300" /><span className="text-xs font-bold text-gray-400">{t.photo}</span><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, activeVariantIndex)} className="hidden" /></label>
+                        <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer"><Camera size={24} className="text-gray-300 mb-1" /><span className="text-xs font-bold text-gray-400">{t.photo}</span><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, activeVariantIndex)} className="hidden" /></label>
                       )}
                    </div>
                    {currentVariant.sizeStocks.map((stock, sIdx) => (
                       <div key={sIdx} className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm relative space-y-2">
-                         <div className="grid grid-cols-2 gap-2">
+                         <div className="grid grid-cols-2 gap-2 pr-6">
                             <div className="relative">
                                <label className="text-[10px] font-bold text-gray-400 uppercase">{t.color}</label>
-                               <div onClick={() => setActiveDropdown({ vIdx: activeVariantIndex, sIdx, field: 'color' })} className="p-2 border rounded-lg text-xs font-bold flex justify-between cursor-pointer">{stock.color || 'Select'}<ChevronDown size={12}/></div>
+                               <div onClick={() => setActiveDropdown({ vIdx: activeVariantIndex, sIdx, field: 'color' })} className="p-2 border rounded-lg text-xs font-bold flex justify-between cursor-pointer text-gray-700">{stock.color || 'Select'}<ChevronDown size={12}/></div>
                                {activeDropdown?.vIdx === activeVariantIndex && activeDropdown?.sIdx === sIdx && activeDropdown?.field === 'color' && (
                                   <div className="absolute z-50 top-full left-0 w-full mt-1 bg-white border rounded-xl shadow-xl max-h-32 overflow-y-auto">
                                      {PREDEFINED_COLORS.map(c => <div key={c.name} onClick={() => updateSizeStock(activeVariantIndex, sIdx, 'color', c.name)} className="p-2 hover:bg-indigo-50 text-xs font-bold border-b">{c.name}</div>)}
@@ -182,8 +189,8 @@ const AddStockModal: React.FC<{ onSave: (item: any, id?: string) => void; onClos
                                )}
                             </div>
                             <div className="relative">
-                               <label className="text-[10px] font-bold text-gray-400 uppercase">{t.sleeve}</label>
-                               <div onClick={() => setActiveDropdown({ vIdx: activeVariantIndex, sIdx, field: 'sleeve' })} className="p-2 border rounded-lg text-xs font-bold flex justify-between cursor-pointer">{stock.sleeve || 'None'}<ChevronDown size={12}/></div>
+                               <label className="text-[10px] font-bold text-gray-400 uppercase">{language === 'ta' ? 'கை வகை' : 'Sleeve'}</label>
+                               <div onClick={() => setActiveDropdown({ vIdx: activeVariantIndex, sIdx, field: 'sleeve' })} className="p-2 border rounded-lg text-xs font-bold flex justify-between cursor-pointer text-gray-700">{stock.sleeve || 'None'}<ChevronDown size={12}/></div>
                                {activeDropdown?.vIdx === activeVariantIndex && activeDropdown?.sIdx === sIdx && activeDropdown?.field === 'sleeve' && (
                                   <div className="absolute z-50 top-full left-0 w-full mt-1 bg-white border rounded-xl shadow-xl">
                                      <div onClick={() => updateSizeStock(activeVariantIndex, sIdx, 'sleeve', 'Full Hand')} className="p-2 hover:bg-indigo-50 text-xs font-bold border-b">Full Hand</div>
@@ -193,7 +200,7 @@ const AddStockModal: React.FC<{ onSave: (item: any, id?: string) => void; onClos
                             </div>
                             <div className="relative">
                                <label className="text-[10px] font-bold text-gray-400 uppercase">{t.size}</label>
-                               <div onClick={() => setActiveDropdown({ vIdx: activeVariantIndex, sIdx, field: 'size' })} className="p-2 border rounded-lg text-xs font-bold flex justify-between cursor-pointer">{stock.size || 'Select'}<ChevronDown size={12}/></div>
+                               <div onClick={() => setActiveDropdown({ vIdx: activeVariantIndex, sIdx, field: 'size' })} className="p-2 border rounded-lg text-xs font-bold flex justify-between cursor-pointer text-gray-700">{stock.size || 'Select'}<ChevronDown size={12}/></div>
                                {activeDropdown?.vIdx === activeVariantIndex && activeDropdown?.sIdx === sIdx && activeDropdown?.field === 'size' && (
                                   <div className="absolute z-50 top-full left-0 w-full mt-1 bg-white border rounded-xl shadow-xl max-h-32 overflow-y-auto">
                                      {SHIRT_SIZES.map(s => <div key={s} onClick={() => updateSizeStock(activeVariantIndex, sIdx, 'size', s)} className="p-2 hover:bg-indigo-50 text-xs font-bold border-b">{s}</div>)}
@@ -203,16 +210,16 @@ const AddStockModal: React.FC<{ onSave: (item: any, id?: string) => void; onClos
                             <div>
                                <label className="text-[10px] font-bold text-gray-400 uppercase">{t.quantity}</label>
                                <div className="flex items-center">
-                                  <button type="button" onClick={() => updateSizeStock(activeVariantIndex, sIdx, 'quantity', Math.max(0, stock.quantity - 1))} className="w-8 h-8 bg-gray-100 rounded-l-lg font-bold">-</button>
-                                  <input type="number" value={stock.quantity} onChange={e => updateSizeStock(activeVariantIndex, sIdx, 'quantity', parseInt(e.target.value) || 0)} className="w-full h-8 text-center text-xs font-black outline-none border-y" />
-                                  <button type="button" onClick={() => updateSizeStock(activeVariantIndex, sIdx, 'quantity', stock.quantity + 1)} className="w-8 h-8 bg-gray-100 rounded-r-lg font-bold">+</button>
+                                  <button type="button" onClick={() => updateSizeStock(activeVariantIndex, sIdx, 'quantity', Math.max(0, stock.quantity - 1))} className="w-8 h-8 bg-gray-100 rounded-l-lg font-bold text-gray-500 hover:bg-gray-200">-</button>
+                                  <input type="number" value={stock.quantity} onChange={e => updateSizeStock(activeVariantIndex, sIdx, 'quantity', parseInt(e.target.value) || 0)} className="w-full h-8 text-center text-xs font-black outline-none border-y border-gray-100" />
+                                  <button type="button" onClick={() => updateSizeStock(activeVariantIndex, sIdx, 'quantity', stock.quantity + 1)} className="w-8 h-8 bg-gray-100 rounded-r-lg font-bold text-gray-500 hover:bg-gray-200">+</button>
                                </div>
                             </div>
                          </div>
-                         <button type="button" onClick={() => { const v = [...variants]; v[activeVariantIndex].sizeStocks = v[activeVariantIndex].sizeStocks.filter((_, i) => i !== sIdx); setVariants(v); }} className="absolute top-0 right-0 p-1 text-gray-300 hover:text-red-500"><X size={14}/></button>
+                         <button type="button" onClick={() => { const v = [...variants]; v[activeVariantIndex].sizeStocks = v[activeVariantIndex].sizeStocks.filter((_, i) => i !== sIdx); setVariants(v); }} className="absolute top-1 right-1 p-1 text-gray-300 hover:text-red-500"><X size={16}/></button>
                       </div>
                    ))}
-                   <button type="button" onClick={() => { const v = [...variants]; v[activeVariantIndex].sizeStocks.push({ size: 'General', quantity: 0, color: '', sleeve: '' }); setVariants(v); }} className="w-full py-2 border-2 border-dashed border-indigo-200 rounded-xl text-indigo-500 font-bold text-xs">+ {language === 'ta' ? 'வகை சேர்க்க' : 'Add Option'}</button>
+                   <button type="button" onClick={() => { const v = [...variants]; v[activeVariantIndex].sizeStocks.push({ size: 'General', quantity: 0, color: '', sleeve: '' }); setVariants(v); }} className="w-full py-2.5 border-2 border-dashed border-indigo-200 rounded-xl text-indigo-500 font-bold text-xs hover:bg-indigo-50 transition">+ {language === 'ta' ? 'அளவு சேர்க்க' : 'Add Option'}</button>
                 </div>
              )}
           </div>
@@ -236,16 +243,16 @@ const App: React.FC = () => {
   const [editingStock, setEditingStock] = useState<StockItem | null>(null);
   const [isAddingTransaction, setIsAddingTransaction] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
-  const [securityAction, setSecurityAction] = useState<SecurityAction | null>(null);
-  const [securityOtp, setSecurityOtp] = useState<string>('');
   const [showDatabaseConfig, setShowDatabaseConfig] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
 
+  // Use a cleaner email key for storage
+  const getEmailKey = (email: string) => email.toLowerCase().replace(/[^a-z0-9]/g, '_');
+
   useEffect(() => {
     window.addEventListener('online', () => setIsOnline(true));
     window.addEventListener('offline', () => setIsOnline(false));
-    
     const savedLang = localStorage.getItem('viyabaari_lang');
     if (savedLang === 'ta' || savedLang === 'en') setLanguage(savedLang);
 
@@ -257,40 +264,41 @@ const App: React.FC = () => {
         if (savedUser) setUser(JSON.parse(savedUser));
       }
     });
-    return () => {
-      window.removeEventListener('online', () => setIsOnline(true));
-      window.removeEventListener('offline', () => setIsOnline(false));
-    };
   }, []);
 
+  // Fetch Data: Local first, then Supabase
   const fetchData = useCallback(async (isManualRefresh = false) => {
     if (!user) return;
-    const cacheKeyStocks = `viyabaari_stocks_${user.email}`;
-    const cacheKeyTxns = `viyabaari_txns_${user.email}`;
+    const emailKey = getEmailKey(user.email);
+    const cacheKeyStocks = `viyabaari_stocks_${emailKey}`;
+    const cacheKeyTxns = `viyabaari_txns_${emailKey}`;
 
+    // 1. Load Local Storage
     const localS = localStorage.getItem(cacheKeyStocks);
     const localT = localStorage.getItem(cacheKeyTxns);
     if (localS) setStocks(JSON.parse(localS));
     if (localT) setTransactions(JSON.parse(localT));
 
+    // 2. Fetch from Cloud
     if (user.uid && isOnline) {
       if (isManualRefresh) setIsSyncing(true);
       try {
-        const { data: sData } = await supabase.from('stock_items').select('content').eq('user_id', user.uid);
+        const { data: sData, error: sError } = await supabase.from('stock_items').select('content').eq('user_id', user.uid);
         if (sData) {
           const freshS = sData.map((r: any) => typeof r.content === 'string' ? JSON.parse(r.content) : r.content);
           freshS.sort((a, b) => (b.lastUpdated || 0) - (a.lastUpdated || 0));
           setStocks(freshS);
           localStorage.setItem(cacheKeyStocks, JSON.stringify(freshS));
         }
-        const { data: tData } = await supabase.from('transactions').select('content').eq('user_id', user.uid);
+        
+        const { data: tData, error: tError } = await supabase.from('transactions').select('content').eq('user_id', user.uid);
         if (tData) {
           const freshT = tData.map((r: any) => typeof r.content === 'string' ? JSON.parse(r.content) : r.content);
           freshT.sort((a, b) => (b.date || 0) - (a.date || 0));
           setTransactions(freshT);
           localStorage.setItem(cacheKeyTxns, JSON.stringify(freshT));
         }
-      } catch (e) { console.error(e); }
+      } catch (e) { console.error("Cloud fetch failed:", e); }
       finally { if (isManualRefresh) setIsSyncing(false); }
     }
   }, [user, isOnline]);
@@ -299,38 +307,57 @@ const App: React.FC = () => {
     if (user) fetchData();
   }, [user?.uid, fetchData]);
 
+  // Robust Save Logic
   const saveStock = async (itemData: any, id?: string) => {
+    if (!user) return;
     setIsLoading(true);
-    let newItem = { ...itemData, id: id || Date.now().toString(), lastUpdated: Date.now() };
-    if (user?.uid && isOnline) {
-      await supabase.from('stock_items').upsert({ id: newItem.id, user_id: user.uid, content: newItem, last_updated: newItem.lastUpdated });
-    }
+    const newItem = { ...itemData, id: id || Date.now().toString(), lastUpdated: Date.now() };
+    const emailKey = getEmailKey(user.email);
+
+    // Save Local
     setStocks(prev => {
       const updated = id ? prev.map(s => s.id === id ? newItem : s) : [newItem, ...prev];
-      if (user?.email) localStorage.setItem(`viyabaari_stocks_${user.email}`, JSON.stringify(updated));
+      localStorage.setItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated));
       return updated;
     });
+
+    // Save Cloud
+    if (user.uid && isOnline) {
+      try {
+        await supabase.from('stock_items').upsert({ id: newItem.id, user_id: user.uid, content: newItem, last_updated: newItem.lastUpdated });
+      } catch (e) { console.error("Cloud save failed:", e); }
+    }
+
     setIsLoading(false); setIsAddingStock(false); setEditingStock(null);
     setToastMessage(language === 'ta' ? 'சரக்கு சேமிக்கப்பட்டது!' : 'Stock Saved!'); setShowToast(true);
   };
 
   const saveTransaction = async (txnData: any, id?: string, date?: number) => {
+    if (!user) return;
     setIsLoading(true);
-    let newTxn = { ...txnData, id: id || Date.now().toString(), date: date || Date.now() };
-    if (user?.uid && isOnline) {
-      await supabase.from('transactions').upsert({ id: newTxn.id, user_id: user.uid, content: newTxn, date: newTxn.date });
-    }
+    const newTxn = { ...txnData, id: id || Date.now().toString(), date: date || Date.now() };
+    const emailKey = getEmailKey(user.email);
+
+    // Save Local
     setTransactions(prev => {
       const updated = id ? prev.map(t => t.id === id ? newTxn : t) : [newTxn, ...prev];
-      if (user?.email) localStorage.setItem(`viyabaari_txns_${user.email}`, JSON.stringify(updated));
+      localStorage.setItem(`viyabaari_txns_${emailKey}`, JSON.stringify(updated));
       return updated;
     });
+
+    // Save Cloud
+    if (user.uid && isOnline) {
+      try {
+        await supabase.from('transactions').upsert({ id: newTxn.id, user_id: user.uid, content: newTxn, date: newTxn.date });
+      } catch (e) { console.error("Cloud save failed:", e); }
+    }
+
     setIsLoading(false); setIsAddingTransaction(false); setEditingTransaction(null);
     setToastMessage(language === 'ta' ? 'கணக்கு சேமிக்கப்பட்டது!' : 'Entry Saved!'); setShowToast(true);
   };
 
   const t = TRANSLATIONS[language];
-  if (!user) return <AuthScreen onLogin={u => { setUser(u); localStorage.setItem('viyabaari_active_user', JSON.stringify(u)); }} language={language} t={t} isOnline={isOnline} />;
+  if (!user) return <AuthScreen onLogin={u => { setUser(u); localStorage.setItem('viyabaari_active_user', JSON.stringify(u)); window.location.reload(); }} language={language} t={t} isOnline={isOnline} />;
 
   return (
     <div className="max-w-md mx-auto min-h-screen bg-slate-50 flex flex-col shadow-xl">
@@ -345,9 +372,9 @@ const App: React.FC = () => {
       </header>
       <main className="flex-1 overflow-y-auto pb-24">
         {activeTab === 'dashboard' && <Dashboard stocks={stocks} transactions={transactions} language={language} user={user} onSetupServer={() => setShowDatabaseConfig(true)} />}
-        {activeTab === 'stock' && <Inventory stocks={stocks} onDelete={id => setSecurityOtp('1234')} onEdit={s => { setEditingStock(s); setIsAddingStock(true); }} language={language} />}
+        {activeTab === 'stock' && <Inventory stocks={stocks} onDelete={id => {}} onEdit={s => { setEditingStock(s); setIsAddingStock(true); }} language={language} />}
         {activeTab === 'accounts' && <Accounting transactions={transactions} language={language} onEdit={t => { setEditingTransaction(t); setIsAddingTransaction(true); }} onClear={() => {}} />}
-        {activeTab === 'profile' && <Profile user={user} updateUser={setUser} stocks={stocks} transactions={transactions} onLogout={() => { supabase.auth.signOut(); setUser(null); localStorage.removeItem('viyabaari_active_user'); }} onRestore={d => {}} language={language} onLanguageChange={(l) => { setLanguage(l); localStorage.setItem('viyabaari_lang', l); }} onClearTransactions={() => {}} onResetApp={() => {}} onSetupServer={() => setShowDatabaseConfig(true)} />}
+        {activeTab === 'profile' && <Profile user={user} updateUser={setUser} stocks={stocks} transactions={transactions} onLogout={() => { supabase.auth.signOut(); setUser(null); localStorage.removeItem('viyabaari_active_user'); window.location.reload(); }} onRestore={d => {}} language={language} onLanguageChange={(l) => { setLanguage(l); localStorage.setItem('viyabaari_lang', l); }} onClearTransactions={() => {}} onResetApp={() => {}} onSetupServer={() => setShowDatabaseConfig(true)} />}
       </main>
       {showDatabaseConfig && <DatabaseConfigModal onClose={() => setShowDatabaseConfig(false)} language={language} />}
       {isAddingStock && <AddStockModal onSave={saveStock} onClose={() => setIsAddingStock(false)} initialData={editingStock || undefined} language={language} t={t} />}
@@ -402,7 +429,7 @@ const AuthScreen: React.FC<{ onLogin: (u: User) => void; language: 'ta' | 'en'; 
                   {mode === 'REGISTER' && <input value={name} onChange={e => setName(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl font-bold outline-none border focus:border-indigo-200" placeholder="Name" required />}
                   <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl font-bold outline-none border focus:border-indigo-200" placeholder="Email" required />
                   {mode !== 'FORGOT' && <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl font-bold outline-none border focus:border-indigo-200" placeholder="Password" required />}
-                  <button disabled={isLoading} className="w-full bg-indigo-600 text-white p-4 rounded-2xl font-black shadow-lg hover:bg-indigo-700 transition">{isLoading ? '...' : mode === 'LOGIN' ? 'Login' : mode === 'REGISTER' ? 'Sign Up' : 'Send Reset Link'}</button>
+                  <button disabled={isLoading} className="w-full bg-indigo-600 text-white p-4 rounded-2xl font-black shadow-lg hover:bg-indigo-700 transition">{isLoading ? <Loader2 className="animate-spin mx-auto"/> : mode === 'LOGIN' ? 'Login' : mode === 'REGISTER' ? 'Sign Up' : 'Send Reset Link'}</button>
                 </form>
                 <div className="mt-6 text-center space-y-3">
                     {mode === 'LOGIN' && <button onClick={() => setMode('FORGOT')} className="text-xs font-bold text-gray-400 hover:text-indigo-600">{t.forgotPassword}</button>}
