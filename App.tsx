@@ -144,22 +144,22 @@ const AddStockModal: React.FC<{ onSave: (item: any, id?: string) => void; onClos
         </div>
         <form onSubmit={(e) => { e.preventDefault(); onSave({ name, price: parseFloat(price) || 0, category, variants }, initialData?.id); }} className="space-y-6">
           <div>
-            <label className="text-xs font-bold text-gray-400 uppercase ml-3 mb-2 block">{t.itemName}</label>
-            <input value={name} onChange={e => setName(e.target.value)} className="w-full p-5 bg-gray-50 rounded-2xl font-bold outline-none border border-gray-100 focus:border-indigo-200" placeholder={t.itemName} required />
+            <label className="text-sm font-bold text-gray-400 ml-2 mb-2 block">{t.itemName}</label>
+            <input value={name} onChange={e => setName(e.target.value)} className="w-full p-5 bg-gray-50 rounded-[1.5rem] font-bold outline-none border border-gray-100 focus:border-indigo-200" placeholder={t.itemName} required />
           </div>
           
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-bold text-gray-400 uppercase ml-3 mb-2 block">{t.price}</label>
+              <label className="text-sm font-bold text-gray-400 ml-2 mb-2 block">{t.price}</label>
               <div className="relative">
                 <span className="absolute left-5 top-1/2 -translate-y-1/2 font-black text-gray-400">₹</span>
-                <input type="number" value={price} onChange={e => setPrice(e.target.value)} className="w-full p-5 pl-10 bg-gray-50 rounded-2xl font-bold outline-none border border-gray-100 focus:border-indigo-200" placeholder="0" required />
+                <input type="number" value={price} onChange={e => setPrice(e.target.value)} className="w-full p-5 pl-10 bg-gray-50 rounded-[1.5rem] font-bold outline-none border border-gray-100 focus:border-indigo-200" placeholder="0" required />
               </div>
             </div>
             <div>
-              <label className="text-xs font-bold text-gray-400 uppercase ml-3 mb-2 block">{t.category}</label>
+              <label className="text-sm font-bold text-gray-400 ml-2 mb-2 block">{t.category}</label>
               <div className="relative">
-                <select value={category} onChange={e => setCategory(e.target.value)} className="w-full p-5 bg-gray-50 rounded-2xl font-bold outline-none border border-gray-100 appearance-none focus:border-indigo-200" required>
+                <select value={category} onChange={e => setCategory(e.target.value)} className="w-full p-5 bg-gray-50 rounded-[1.5rem] font-bold outline-none border border-gray-100 appearance-none focus:border-indigo-200" required>
                   <option value="">Select</option>
                   {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
@@ -168,30 +168,34 @@ const AddStockModal: React.FC<{ onSave: (item: any, id?: string) => void; onClos
             </div>
           </div>
           
-          <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
+          <div className="bg-slate-50/50 p-6 rounded-[2rem] border border-slate-100">
              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-black text-lg text-gray-800 flex items-center gap-2"><Palette size={20} className="text-indigo-500" /> {language === 'ta' ? 'வகைகள்' : 'Variants'} <span className="text-sm font-medium text-gray-400">(Variants)</span></h3>
+                <h3 className="font-black text-lg text-gray-800 flex items-center gap-2">
+                   <Palette size={20} className="text-gray-700" />
+                   {language === 'ta' ? 'வகைகள்' : 'Variants'}
+                   <span className="text-sm font-medium text-gray-400">(Variants)</span>
+                </h3>
                 <button type="button" onClick={() => setVariants([...variants, { id: Date.now().toString(), imageUrl: '', sizeStocks: [{ size: 'General', quantity: 0, color: '', sleeve: '' }] }])} className="text-indigo-600 text-xs font-black bg-indigo-50 px-4 py-2 rounded-xl hover:bg-indigo-100 transition shadow-sm">+ {language === 'ta' ? 'புதிய வகை' : 'Add New'}</button>
              </div>
              
              <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
                  {variants.map((v, idx) => (
-                     <button key={v.id || idx} type="button" onClick={() => setActiveVariantIndex(idx)} className={`flex-shrink-0 w-14 h-14 rounded-2xl border-2 transition-all flex items-center justify-center ${activeVariantIndex === idx ? 'border-indigo-500 bg-white ring-4 ring-indigo-50 shadow-md scale-105' : 'border-gray-200 bg-gray-100 opacity-60'}`}>
+                     <button key={v.id || idx} type="button" onClick={() => setActiveVariantIndex(idx)} className={`flex-shrink-0 w-14 h-14 rounded-2xl border-2 transition-all flex items-center justify-center ${activeVariantIndex === idx ? 'border-indigo-500 bg-white ring-4 ring-indigo-50 shadow-md scale-105' : 'border-gray-200 bg-gray-100'}`}>
                          {v.imageUrl ? <img src={v.imageUrl} className="w-full h-full object-cover rounded-xl" alt="" /> : <span className="text-xs font-black text-gray-400">#{idx + 1}</span>}
                      </button>
                  ))}
              </div>
              
              {currentVariant && (
-                <div className="space-y-6 animate-in fade-in duration-300">
-                   <div className="relative aspect-square bg-white rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center overflow-hidden group">
+                <div className="space-y-6 mt-4">
+                   <div className="relative aspect-video bg-white rounded-3xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center overflow-hidden group">
                       {currentVariant.imageUrl ? (
                         <><img src={currentVariant.imageUrl} className="w-full h-full object-contain" alt="" />
                         <button type="button" onClick={() => { const v = [...variants]; v[activeVariantIndex].imageUrl = ''; setVariants(v); }} className="absolute top-3 right-3 bg-black/50 text-white p-2 rounded-full backdrop-blur-md opacity-0 group-hover:opacity-100 transition"><Trash2 size={18} /></button></>
                       ) : (
-                        <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-indigo-50/30 transition">
+                        <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-gray-50 transition">
                            <Camera size={32} className="text-gray-300 mb-2" />
-                           <span className="text-sm font-black text-gray-400">{t.photo}</span>
+                           <span className="text-sm font-bold text-gray-400">{t.photo}</span>
                            <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, activeVariantIndex)} className="hidden" />
                         </label>
                       )}
@@ -199,8 +203,8 @@ const AddStockModal: React.FC<{ onSave: (item: any, id?: string) => void; onClos
                    
                    <div className="space-y-4">
                       {currentVariant.sizeStocks.map((stock, sIdx) => (
-                        <div key={sIdx} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm relative space-y-4">
-                           <div className="grid grid-cols-2 gap-3">
+                        <div key={sIdx} className="bg-white p-6 rounded-[1.8rem] border border-gray-100 shadow-sm relative space-y-4">
+                           <div className="grid grid-cols-2 gap-4">
                               <div className="relative">
                                  <label className="text-[10px] font-black text-gray-400 uppercase ml-1 mb-1 block">{t.color}</label>
                                  <div onClick={() => setActiveDropdown({ vIdx: activeVariantIndex, sIdx, field: 'color' })} className="p-3 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold flex justify-between items-center cursor-pointer text-gray-700">
@@ -208,7 +212,7 @@ const AddStockModal: React.FC<{ onSave: (item: any, id?: string) => void; onClos
                                     <ChevronDown size={14} className="text-gray-400" />
                                  </div>
                                  {activeDropdown?.vIdx === activeVariantIndex && activeDropdown?.sIdx === sIdx && activeDropdown?.field === 'color' && (
-                                    <div className="absolute z-[60] top-full left-0 w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-2xl max-h-40 overflow-y-auto p-2">
+                                    <div className="absolute z-[60] bottom-full left-0 w-full mb-2 bg-white border border-gray-100 rounded-2xl shadow-2xl max-h-40 overflow-y-auto p-2">
                                        {PREDEFINED_COLORS.map(c => <div key={c.name} onClick={() => updateSizeStock(activeVariantIndex, sIdx, 'color', c.name)} className="p-3 hover:bg-indigo-50 rounded-xl text-xs font-black text-gray-700 border-b last:border-0">{c.name}</div>)}
                                     </div>
                                  )}
@@ -220,7 +224,7 @@ const AddStockModal: React.FC<{ onSave: (item: any, id?: string) => void; onClos
                                     <ChevronDown size={14} className="text-gray-400" />
                                  </div>
                                  {activeDropdown?.vIdx === activeVariantIndex && activeDropdown?.sIdx === sIdx && activeDropdown?.field === 'sleeve' && (
-                                    <div className="absolute z-[60] top-full left-0 w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-2xl p-2">
+                                    <div className="absolute z-[60] bottom-full left-0 w-full mb-2 bg-white border border-gray-100 rounded-2xl shadow-2xl p-2">
                                        <div onClick={() => updateSizeStock(activeVariantIndex, sIdx, 'sleeve', 'Full Hand')} className="p-3 hover:bg-indigo-50 rounded-xl text-xs font-black text-gray-700 border-b">Full Hand</div>
                                        <div onClick={() => updateSizeStock(activeVariantIndex, sIdx, 'sleeve', 'Half Hand')} className="p-3 hover:bg-indigo-50 rounded-xl text-xs font-black text-gray-700">Half Hand</div>
                                     </div>
@@ -228,7 +232,7 @@ const AddStockModal: React.FC<{ onSave: (item: any, id?: string) => void; onClos
                               </div>
                            </div>
                            
-                           <div className="grid grid-cols-2 gap-3">
+                           <div className="grid grid-cols-2 gap-4">
                               <div className="relative">
                                  <label className="text-[10px] font-black text-gray-400 uppercase ml-1 mb-1 block">{t.size}</label>
                                  <div onClick={() => setActiveDropdown({ vIdx: activeVariantIndex, sIdx, field: 'size' })} className="p-3 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold flex justify-between items-center cursor-pointer text-gray-700">
@@ -236,30 +240,30 @@ const AddStockModal: React.FC<{ onSave: (item: any, id?: string) => void; onClos
                                     <ChevronDown size={14} className="text-gray-400" />
                                  </div>
                                  {activeDropdown?.vIdx === activeVariantIndex && activeDropdown?.sIdx === sIdx && activeDropdown?.field === 'size' && (
-                                    <div className="absolute z-[60] top-full left-0 w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-2xl max-h-40 overflow-y-auto p-2">
+                                    <div className="absolute z-[60] bottom-full left-0 w-full mb-2 bg-white border border-gray-100 rounded-2xl shadow-2xl max-h-40 overflow-y-auto p-2">
                                        {SHIRT_SIZES.map(s => <div key={s} onClick={() => updateSizeStock(activeVariantIndex, sIdx, 'size', s)} className="p-3 hover:bg-indigo-50 rounded-xl text-xs font-black text-gray-700 border-b last:border-0">{s}</div>)}
                                     </div>
                                  )}
                               </div>
                               <div>
                                  <label className="text-[10px] font-black text-gray-400 uppercase ml-1 mb-1 block">{language === 'ta' ? 'அளவு' : 'Quantity'}</label>
-                                 <div className="flex items-center bg-gray-100 rounded-xl p-1">
-                                    <button type="button" onClick={() => updateSizeStock(activeVariantIndex, sIdx, 'quantity', Math.max(0, stock.quantity - 1))} className="w-10 h-10 flex items-center justify-center font-black text-gray-500 hover:text-indigo-600 transition">-</button>
+                                 <div className="flex items-center bg-gray-100 rounded-xl p-1 h-[42px]">
+                                    <button type="button" onClick={() => updateSizeStock(activeVariantIndex, sIdx, 'quantity', Math.max(0, stock.quantity - 1))} className="w-10 h-10 flex items-center justify-center font-black text-gray-400 hover:text-indigo-600 transition">-</button>
                                     <input type="number" value={stock.quantity} onChange={e => updateSizeStock(activeVariantIndex, sIdx, 'quantity', parseInt(e.target.value) || 0)} className="w-full text-center text-sm font-black bg-transparent outline-none" />
-                                    <button type="button" onClick={() => updateSizeStock(activeVariantIndex, sIdx, 'quantity', stock.quantity + 1)} className="w-10 h-10 flex items-center justify-center font-black text-gray-500 hover:text-indigo-600 transition">+</button>
+                                    <button type="button" onClick={() => updateSizeStock(activeVariantIndex, sIdx, 'quantity', stock.quantity + 1)} className="w-10 h-10 flex items-center justify-center font-black text-gray-400 hover:text-indigo-600 transition">+</button>
                                  </div>
                               </div>
                            </div>
                            
-                           <button type="button" onClick={() => { const v = [...variants]; v[activeVariantIndex].sizeStocks = v[activeVariantIndex].sizeStocks.filter((_, i) => i !== sIdx); setVariants(v); }} className="absolute -top-2 -right-2 p-1.5 bg-white border border-gray-100 text-gray-400 hover:text-red-500 rounded-full shadow-sm transition"><X size={14}/></button>
+                           <button type="button" onClick={() => { const v = [...variants]; v[activeVariantIndex].sizeStocks = v[activeVariantIndex].sizeStocks.filter((_, i) => i !== sIdx); setVariants(v); }} className="absolute -top-2 -right-2 p-1.5 bg-white border border-gray-100 text-gray-300 hover:text-red-500 rounded-full shadow-sm transition"><X size={14}/></button>
                         </div>
                       ))}
-                      <button type="button" onClick={() => { const v = [...variants]; v[activeVariantIndex].sizeStocks.push({ size: 'General', quantity: 0, color: '', sleeve: '' }); setVariants(v); }} className="w-full py-3 border-2 border-dashed border-indigo-200 rounded-2xl text-indigo-500 font-black text-xs hover:bg-indigo-50 transition">+ {language === 'ta' ? 'புதிய ஆப்ஷன் சேர்க்க' : 'Add Stock Option'}</button>
+                      <button type="button" onClick={() => { const v = [...variants]; v[activeVariantIndex].sizeStocks.push({ size: 'General', quantity: 0, color: '', sleeve: '' }); setVariants(v); }} className="w-full py-4 border-2 border-dashed border-indigo-200 rounded-2xl text-indigo-500 font-black text-xs hover:bg-indigo-50 transition">+ {language === 'ta' ? 'புதிய ஆப்ஷன் சேர்க்க' : 'Add Stock Option'}</button>
                    </div>
                 </div>
              )}
           </div>
-          <button type="submit" className="w-full py-5 bg-indigo-600 text-white font-black rounded-2xl shadow-xl shadow-indigo-100 active:scale-[0.98] transition text-lg">{initialData ? t.update : t.save}</button>
+          <button type="submit" className="w-full py-5 bg-indigo-600 text-white font-black rounded-[1.5rem] shadow-xl shadow-indigo-100 active:scale-[0.98] transition text-lg">{initialData ? t.update : t.save}</button>
         </form>
       </div>
     </div>
