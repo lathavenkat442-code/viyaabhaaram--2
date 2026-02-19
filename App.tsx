@@ -258,8 +258,6 @@ const AddTransactionModal: React.FC<{
   );
 };
 
-// ... [AddStockModal component remains unchanged, assuming it's correctly placed here in real file] ...
-
 const AddStockModal: React.FC<{
   onSave: (item: any, id?: string) => void;
   onClose: () => void;
@@ -743,69 +741,74 @@ const App: React.FC = () => {
   // --- DATA SYNC (Supabase) ---
   const fetchData = useCallback(async (isManualRefresh = false) => {
       if (!user) return;
-      
-      let fetchedFromOnline = false;
 
-      if (user.uid && navigator.onLine) {
+      // 1. Always load local data first for immediate UI (unless manual refresh)
+      if (!isManualRefresh && user.email) {
+           const savedStocks = localStorage.getItem(`viyabaari_stocks_${user.email}`);
+           const savedTxns = localStorage.getItem(`viyabaari_txns_${user.email}`);
+           if (savedStocks) {
+               setStocks(JSON.parse(savedStocks));
+           }
+           if (savedTxns) {
+               setTransactions(JSON.parse(savedTxns));
+           }
+      }
+
+      // 2. If Online and Valid User, Fetch from Cloud
+      if (user.uid && isOnline) {
           if (isManualRefresh) setIsSyncing(true);
+          
           try {
               // Fetch Stocks
               const { data: stockData, error: stockError } = await supabase
                   .from('stock_items')
-                  .select('content')
+                  .select('*') // Select ALL to be safe
                   .eq('user_id', user.uid);
               
-              if (stockError) {
-                  console.error("Supabase Error (Stock):", stockError.message);
-                  if (isManualRefresh) alert(`Sync Error: ${stockError.message}. Check SQL Tables.`);
-              } else if (stockData) {
-                  const parsedStocks = stockData.map((row: any) => row.content);
-                  parsedStocks.sort((a: StockItem, b: StockItem) => b.lastUpdated - a.lastUpdated);
+              if (!stockError && stockData) {
+                  // Handle potential JSON string vs Object differences
+                  const parsedStocks = stockData.map((row: any) => 
+                      typeof row.content === 'string' ? JSON.parse(row.content) : row.content
+                  );
+                  
+                  // Sort
+                  parsedStocks.sort((a: StockItem, b: StockItem) => (b.lastUpdated || 0) - (a.lastUpdated || 0));
+                  
+                  // Update State & Cache
                   setStocks(parsedStocks);
                   localStorage.setItem(`viyabaari_stocks_${user.email}`, JSON.stringify(parsedStocks));
-                  fetchedFromOnline = true;
               }
 
               // Fetch Transactions
               const { data: txnData, error: txnError } = await supabase
                   .from('transactions')
-                  .select('content')
+                  .select('*') // Select ALL to be safe
                   .eq('user_id', user.uid);
 
-              if (txnError) {
-                   console.error("Supabase Error (Txn):", txnError.message);
-              } else if (txnData) {
-                  const parsedTxns = txnData.map((row: any) => row.content);
-                  parsedTxns.sort((a: Transaction, b: Transaction) => b.date - a.date);
+              if (!txnError && txnData) {
+                  const parsedTxns = txnData.map((row: any) => 
+                      typeof row.content === 'string' ? JSON.parse(row.content) : row.content
+                  );
+                  
+                  parsedTxns.sort((a: Transaction, b: Transaction) => (b.date || 0) - (a.date || 0));
+                  
                   setTransactions(parsedTxns);
                   localStorage.setItem(`viyabaari_txns_${user.email}`, JSON.stringify(parsedTxns));
-                  fetchedFromOnline = true;
               }
 
           } catch (err) {
-              console.error('Error fetching data:', err);
+              console.error("Sync Error:", err);
           } finally {
-              if (isManualRefresh) {
-                  setTimeout(() => setIsSyncing(false), 500); 
-              }
+              if (isManualRefresh) setTimeout(() => setIsSyncing(false), 500);
           }
-      } 
-      
-      // Fallback: If offline OR if online fetch failed (empty/error) AND we haven't successfully fetched
-      if (!fetchedFromOnline) {
-           const savedStocks = localStorage.getItem(`viyabaari_stocks_${user.email}`);
-           const savedTxns = localStorage.getItem(`viyabaari_txns_${user.email}`);
-           if (savedStocks) setStocks(JSON.parse(savedStocks));
-           if (savedTxns) setTransactions(JSON.parse(savedTxns));
-           if (isManualRefresh) setIsSyncing(false);
       }
-  }, [user]);
+  }, [user, isOnline]);
 
   // Initial Fetch & Realtime Subscription
   useEffect(() => {
-    fetchData();
-
     if (user?.uid && isOnline) {
+        fetchData(); 
+
         // Subscribe to real-time changes
         const channel = supabase.channel('db-changes')
           .on(
@@ -839,8 +842,16 @@ const App: React.FC = () => {
         return () => {
             supabase.removeChannel(channel);
         };
+    } else {
+        // Fallback for offline/guest
+        if (user?.email) {
+            const savedStocks = localStorage.getItem(`viyabaari_stocks_${user.email}`);
+            const savedTxns = localStorage.getItem(`viyabaari_txns_${user.email}`);
+            if (savedStocks) setStocks(JSON.parse(savedStocks));
+            if (savedTxns) setTransactions(JSON.parse(savedTxns));
+        }
     }
-  }, [fetchData, user?.uid, isOnline]);
+  }, [fetchData, user?.uid, isOnline, user?.email]);
 
   const saveStock = async (itemData: Omit<StockItem, 'id' | 'lastUpdated' | 'history'>, id?: string) => {
     setIsLoading(true);
