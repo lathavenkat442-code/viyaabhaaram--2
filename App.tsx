@@ -307,6 +307,8 @@ const App: React.FC = () => {
   const fetchData = useCallback(async (isManualRefresh = false) => {
     if (!user) return;
     const emailKey = getEmailKey(user.email);
+    
+    // Load local data immediately
     try {
         const localS = localStorage.getItem(`viyabaari_stocks_${emailKey}`);
         const localT = localStorage.getItem(`viyabaari_txns_${emailKey}`);
@@ -317,23 +319,30 @@ const App: React.FC = () => {
     if (user.uid && isOnline && isSupabaseConfigured) {
       if (isManualRefresh) setIsSyncing(true);
       try {
-        const { data: sData } = await supabase.from('stock_items').select('content').eq('user_id', user.uid);
+        // Force Fetch Stocks
+        const { data: sData } = await supabase.from('stock_items').select('content').eq('user_id', user.uid).order('last_updated', { ascending: false });
         if (sData) {
           const freshS = sData.map((r: any) => {
               try { return typeof r.content === 'string' ? JSON.parse(r.content) : r.content; } catch(e) { return null; }
           }).filter(Boolean);
-          setStocks(freshS.sort((a, b) => (b.lastUpdated || 0) - (a.lastUpdated || 0)));
+          setStocks(freshS);
           localStorage.setItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(freshS));
         }
-        const { data: tData } = await supabase.from('transactions').select('content').eq('user_id', user.uid);
+
+        // Force Fetch Transactions (Cache Bypass)
+        const { data: tData } = await supabase.from('transactions')
+          .select('content')
+          .eq('user_id', user.uid)
+          .order('date', { ascending: false }); // Ensures newest first from DB
+        
         if (tData) {
           const freshT = tData.map((r: any) => {
               try { return typeof r.content === 'string' ? JSON.parse(r.content) : r.content; } catch(e) { return null; }
           }).filter(Boolean);
-          setTransactions(freshT.sort((a, b) => (b.date || 0) - (a.date || 0)));
+          setTransactions(freshT);
           localStorage.setItem(`viyabaari_txns_${emailKey}`, JSON.stringify(freshT));
         }
-      } catch (e) { console.error("Cloud fetch failed"); }
+      } catch (e) { console.error("Cloud fetch failed", e); }
       finally { if (isManualRefresh) setIsSyncing(false); }
     }
   }, [user, isOnline]);
@@ -346,11 +355,14 @@ const App: React.FC = () => {
     try {
         const newItem = { ...itemData, id: id || Date.now().toString(), lastUpdated: Date.now() };
         const emailKey = getEmailKey(user.email);
+        
+        // Immediate UI Update
         setStocks(prev => {
           const updated = id ? prev.map(s => s.id === id ? newItem : s) : [newItem, ...prev];
           localStorage.setItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated));
           return updated;
         });
+
         if (user.uid && isOnline && isSupabaseConfigured) {
           await supabase.from('stock_items').upsert({ id: newItem.id, user_id: user.uid, content: newItem, last_updated: newItem.lastUpdated });
         }
@@ -366,11 +378,14 @@ const App: React.FC = () => {
     try {
         const newTxn = { ...txnData, id: id || Date.now().toString(), date: date || Date.now() };
         const emailKey = getEmailKey(user.email);
+        
+        // Immediate UI Update (Like Stocks)
         setTransactions(prev => {
           const updated = id ? prev.map(t => t.id === id ? newTxn : t) : [newTxn, ...prev];
           localStorage.setItem(`viyabaari_txns_${emailKey}`, JSON.stringify(updated));
           return updated;
         });
+
         if (user.uid && isOnline && isSupabaseConfigured) {
           await supabase.from('transactions').upsert({ id: newTxn.id, user_id: user.uid, content: newTxn, date: newTxn.date });
         }
@@ -378,6 +393,20 @@ const App: React.FC = () => {
         setToast({ msg: language === 'ta' ? 'கணக்கு சேமிக்கப்பட்டது!' : 'Entry Saved!', show: true });
     } catch (err) { setToast({ msg: 'Error saving transaction', show: true, isError: true }); }
     finally { setIsLoading(false); }
+  };
+
+  const handleClearTransactions = async () => {
+    if (!user) return;
+    const emailKey = getEmailKey(user.email);
+    
+    // Immediate UI Clear
+    setTransactions([]);
+    localStorage.setItem(`viyabaari_txns_${emailKey}`, '[]');
+    
+    if (user.uid && isOnline && isSupabaseConfigured) {
+       await supabase.from('transactions').delete().eq('user_id', user.uid);
+    }
+    setToast({ msg: language === 'ta' ? 'அனைத்தும் அழிக்கப்பட்டது' : 'Cleared all', show: true });
   };
 
   const t = TRANSLATIONS[language];
@@ -397,8 +426,8 @@ const App: React.FC = () => {
       <main className="flex-1 overflow-y-auto pb-24">
         {activeTab === 'dashboard' && <Dashboard stocks={stocks} transactions={transactions} language={language} user={user} onSetupServer={() => setShowDatabaseConfig(true)} />}
         {activeTab === 'stock' && <Inventory stocks={stocks} onDelete={id => {}} onEdit={s => { setEditingStock(s); setIsAddingStock(true); }} language={language} />}
-        {activeTab === 'accounts' && <Accounting transactions={transactions} language={language} onEdit={t => { setEditingTransaction(t); setIsAddingTransaction(true); }} onClear={() => {}} />}
-        {activeTab === 'profile' && <Profile user={user} updateUser={setUser} stocks={stocks} transactions={transactions} onLogout={() => { supabase.auth.signOut(); setUser(null); localStorage.removeItem('viyabaari_active_user'); window.location.reload(); }} onRestore={d => {}} language={language} onLanguageChange={(l) => { setLanguage(l); localStorage.setItem('viyabaari_lang', l); }} onClearTransactions={() => {}} onResetApp={() => {}} onSetupServer={() => setShowDatabaseConfig(true)} />}
+        {activeTab === 'accounts' && <Accounting transactions={transactions} language={language} onEdit={t => { setEditingTransaction(t); setIsAddingTransaction(true); }} onClear={handleClearTransactions} />}
+        {activeTab === 'profile' && <Profile user={user} updateUser={setUser} stocks={stocks} transactions={transactions} onLogout={() => { supabase.auth.signOut(); setUser(null); localStorage.removeItem('viyabaari_active_user'); window.location.reload(); }} onRestore={d => {}} language={language} onLanguageChange={(l) => { setLanguage(l); localStorage.setItem('viyabaari_lang', l); }} onClearTransactions={handleClearTransactions} onResetApp={() => {}} onSetupServer={() => setShowDatabaseConfig(true)} />}
       </main>
       {showDatabaseConfig && <DatabaseConfigModal onClose={() => setShowDatabaseConfig(false)} language={language} />}
       {isAddingStock && <AddStockModal onSave={saveStock} onClose={() => setIsAddingStock(false)} initialData={editingStock || undefined} language={language} t={t} />}
