@@ -506,7 +506,15 @@ const App: React.FC = () => {
         {activeTab === 'dashboard' && <Dashboard stocks={stocks} transactions={transactions} language={language} user={user} onSetupServer={() => setShowDatabaseConfig(true)} />}
         {activeTab === 'stock' && <Inventory stocks={stocks} onDelete={handleDeleteStock} onEdit={s => { setEditingStock(s); setIsAddingStock(true); }} language={language} />}
         {activeTab === 'accounts' && <Accounting transactions={transactions} language={language} onEdit={t => { setEditingTransaction(t); setIsAddingTransaction(true); }} onClear={handleClearTransactions} />}
-        {activeTab === 'profile' && <Profile user={user} updateUser={setUser} stocks={stocks} transactions={transactions} onLogout={() => { supabase.auth.signOut(); setUser(null); localStorage.removeItem('viyabaari_active_user'); window.location.reload(); }} onRestore={d => {}} language={language} onLanguageChange={(l) => { setLanguage(l); localStorage.setItem('viyabaari_lang', l); }} onClearTransactions={handleClearTransactions} onResetApp={() => {}} onSetupServer={() => setShowDatabaseConfig(true)} />}
+        {activeTab === 'profile' && <Profile user={user} updateUser={setUser} stocks={stocks} transactions={transactions} onLogout={async () => { 
+            await supabase.auth.signOut(); 
+            setUser(null); 
+            localStorage.removeItem('viyabaari_active_user'); 
+            // Clear any other session data if needed
+            sessionStorage.clear();
+            // Force reload to clear any in-memory state
+            window.location.reload(); 
+        }} onRestore={d => {}} language={language} onLanguageChange={(l) => { setLanguage(l); localStorage.setItem('viyabaari_lang', l); }} onClearTransactions={handleClearTransactions} onResetApp={() => {}} onSetupServer={() => setShowDatabaseConfig(true)} />}
       </main>
       {showDatabaseConfig && <DatabaseConfigModal onClose={() => setShowDatabaseConfig(false)} language={language} />}
       {isAddingStock && <AddStockModal onSave={saveStock} onClose={() => setIsAddingStock(false)} initialData={editingStock || undefined} language={language} t={t} />}
@@ -564,7 +572,20 @@ const AuthScreen: React.FC<{ onLogin: (u: User) => void; language: 'ta' | 'en'; 
                   {mode !== 'FORGOT' && <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-gray-50 p-4 rounded-2xl font-bold outline-none border focus:border-indigo-200" placeholder="Password" required />}
                   <button disabled={isLoading} className="w-full bg-indigo-600 text-white p-4 rounded-2xl font-black shadow-lg hover:bg-indigo-700 transition">{isLoading ? <Loader2 className="animate-spin mx-auto"/> : mode === 'LOGIN' ? 'Login' : mode === 'REGISTER' ? 'Sign Up' : 'Send Reset Link'}</button>
                 </form>
-                <div className="mt-6 text-center">
+                
+                {mode === 'LOGIN' && (
+                   <div className="mt-4 text-center">
+                       <button onClick={() => setMode('FORGOT')} className="text-sm font-bold text-gray-400 hover:text-indigo-600 transition">Forgot Password?</button>
+                   </div>
+                )}
+                
+                {mode === 'FORGOT' && (
+                   <div className="mt-4 text-center">
+                       <button onClick={() => setMode('LOGIN')} className="text-sm font-bold text-gray-400 hover:text-indigo-600 transition">Back to Login</button>
+                   </div>
+                )}
+
+                <div className="mt-6 text-center border-t pt-4">
                     <button onClick={() => onLogin({ email: 'guest@viyabaari.local', name: 'Guest', isLoggedIn: true })} className="text-indigo-600 font-bold text-sm hover:underline w-full">Guest Mode (Offline)</button>
                 </div>
          </div>
