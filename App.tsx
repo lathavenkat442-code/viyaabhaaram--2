@@ -110,47 +110,19 @@ const AddStockModal: React.FC<{ onSave: (item: any, id?: string) => void; onClos
   const [activeDropdown, setActiveDropdown] = useState<{ vIdx: number, sIdx: number, field: 'color' | 'size' | 'sleeve' } | null>(null);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, variantIndex: number) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      if (files.length > 12) {
-        alert(language === 'ta' ? 'அதிகபட்சம் 12 படங்கள் மட்டுமே' : 'Maximum 12 images allowed');
-        return;
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+          alert(language === 'ta' ? 'படம் 2MB-க்கு குறைவாக இருக்க வேண்டும்' : 'Image must be less than 2MB');
+          return;
       }
-
-      const readFile = (file: File): Promise<string> => {
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(file);
-        });
-      };
-
-      const processFiles = async () => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
         const newVariants = [...variants];
-        const currentTemplate = newVariants[variantIndex];
-        
-        // Process first file -> Updates CURRENT variant
-        if (files[0].size <= 2 * 1024 * 1024) {
-            newVariants[variantIndex].imageUrl = await readFile(files[0]);
-        } else {
-            alert(language === 'ta' ? 'படம் 2MB-க்கு குறைவாக இருக்க வேண்டும்' : 'Image must be less than 2MB');
-        }
-
-        // Process remaining files -> Create NEW variants
-        for (let i = 1; i < files.length; i++) {
-            if (files[i].size <= 2 * 1024 * 1024) {
-                const imgUrl = await readFile(files[i]);
-                newVariants.push({
-                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-                    imageUrl: imgUrl,
-                    sizeStocks: currentTemplate.sizeStocks.map(s => ({ ...s })) // Clone sizes
-                });
-            }
-        }
+        newVariants[variantIndex].imageUrl = reader.result as string;
         setVariants(newVariants);
       };
-
-      processFiles();
+      reader.readAsDataURL(file);
     }
   };
 
@@ -235,7 +207,7 @@ const AddStockModal: React.FC<{ onSave: (item: any, id?: string) => void; onClos
                         <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-gray-50 transition">
                            <Camera size={32} className="text-gray-300 mb-2" />
                            <span className="text-sm font-bold text-gray-400">{t.photo}</span>
-                           <input type="file" accept="image/*" multiple onChange={(e) => handleImageUpload(e, activeVariantIndex)} className="hidden" />
+                           <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, activeVariantIndex)} className="hidden" />
                         </label>
                       )}
                    </div>
@@ -324,7 +296,6 @@ const App: React.FC = () => {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [showDatabaseConfig, setShowDatabaseConfig] = useState(false);
   const [toast, setToast] = useState<{ msg: string, show: boolean, isError?: boolean }>({ msg: '', show: false });
-  const [isAppLoading, setIsAppLoading] = useState(true);
 
   const getEmailKey = (email: string) => (email || 'guest').toLowerCase().replace(/[^a-z0-9]/g, '_');
 
@@ -334,31 +305,13 @@ const App: React.FC = () => {
     const savedLang = localStorage.getItem('viyabaari_lang');
     if (savedLang === 'ta' || savedLang === 'en') setLanguage(savedLang);
 
-    // Safety timeout to prevent infinite loading
-    const safetyTimeout = setTimeout(() => {
-        setIsAppLoading(false);
-    }, 5000);
-
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        setUser({ 
-          uid: session.user.id, 
-          email: session.user.email || '', 
-          name: session.user.user_metadata.full_name || session.user.user_metadata.name || 'User', 
-          avatar: session.user.user_metadata.avatar_url,
-          isLoggedIn: true 
-        });
+        setUser({ uid: session.user.id, email: session.user.email || '', name: session.user.user_metadata.name || 'User', isLoggedIn: true });
       } else {
         const savedUser = localStorage.getItem('viyabaari_active_user');
         if (savedUser) { try { setUser(JSON.parse(savedUser)); } catch(e) { localStorage.removeItem('viyabaari_active_user'); } }
       }
-      clearTimeout(safetyTimeout);
-      setIsAppLoading(false);
-    }).catch(err => {
-      console.error("Session check failed", err);
-      const savedUser = localStorage.getItem('viyabaari_active_user');
-      if (savedUser) { try { setUser(JSON.parse(savedUser)); } catch(e) {} }
-      setIsAppLoading(false);
     });
   }, []);
 
@@ -376,53 +329,33 @@ const App: React.FC = () => {
 
     if (user.uid && isOnline && isSupabaseConfigured) {
       if (isManualRefresh) setIsSyncing(true);
-      
       try {
         // Force Fetch Stocks
         const { data: sData, error: sError } = await supabase.from('stock_items').select('*').eq('user_id', user.uid).order('last_updated', { ascending: false });
-        
-        if (sError) throw sError;
-        
+        if (sError) console.error("Fetch stocks error:", sError);
         if (sData) {
           const freshS = sData.map((r: any) => {
-              // Try content field first, then fallback to row itself if it has id
-              if (r.content) {
-                  try { return typeof r.content === 'string' ? JSON.parse(r.content) : r.content; } catch(e) { return null; }
-              }
-              return r.id ? r : null;
+              try { return typeof r.content === 'string' ? JSON.parse(r.content) : r.content; } catch(e) { return null; }
           }).filter(Boolean);
-          
           setStocks(freshS);
           try { localStorage.setItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(freshS)); } catch(e) {}
         }
 
         // Force Fetch Transactions
         const { data: tData, error: tError } = await supabase.from('transactions').select('*').eq('user_id', user.uid);
-        
-        if (tError) throw tError;
-        
+        if (tError) console.error("Fetch txns error:", tError);
         if (tData) {
           const freshT = tData.map((r: any) => {
-              if (r.content) {
-                  try { return typeof r.content === 'string' ? JSON.parse(r.content) : r.content; } catch(e) { return null; }
-              }
-              return r.id ? r : null;
+              try { return typeof r.content === 'string' ? JSON.parse(r.content) : r.content; } catch(e) { return null; }
           }).filter(Boolean);
-          
           freshT.sort((a: any, b: any) => (b.date || 0) - (a.date || 0));
           setTransactions(freshT);
           try { localStorage.setItem(`viyabaari_txns_${emailKey}`, JSON.stringify(freshT)); } catch(e) {}
         }
-      } catch (e) { 
-          console.error("Cloud fetch failed", e); 
-      } finally { 
-          if (isManualRefresh) setIsSyncing(false);
-          setIsAppLoading(false); 
-      }
-    } else {
-        setIsAppLoading(false);
+      } catch (e) { console.error("Cloud fetch failed", e); }
+      finally { if (isManualRefresh) setIsSyncing(false); }
     }
-  }, [user?.uid, user?.email, isOnline]);
+  }, [user, isOnline]);
 
   useEffect(() => { if (user) fetchData(); }, [user?.uid, fetchData]);
 
@@ -517,15 +450,8 @@ const App: React.FC = () => {
   };
 
   const handleDeleteStock = async (id: string) => {
-    const confirmMsg = language === 'ta' 
-        ? 'இதை நீக்க "DELETE" என டைப் செய்யவும்:' 
-        : 'Type "DELETE" to confirm deletion:';
-    
-    const input = window.prompt(confirmMsg);
-    if (input !== 'DELETE') {
-        if (input !== null) alert(language === 'ta' ? 'தவறான குறியீடு' : 'Incorrect confirmation');
-        return false;
-    }
+    const confirmMsg = language === 'ta' ? 'நிச்சயமாக இதை நீக்க வேண்டுமா?' : 'Are you sure you want to delete?';
+    if (!window.confirm(confirmMsg)) return false;
     
     if (!user) return false;
     setIsLoading(true);
@@ -563,27 +489,17 @@ const App: React.FC = () => {
   };
 
   const t = TRANSLATIONS[language];
-  
-  if (isAppLoading) {
-      return (
-          <div className="min-h-screen bg-indigo-600 flex flex-col items-center justify-center text-white">
-              <Loader2 size={48} className="animate-spin mb-4" />
-              <h1 className="text-2xl font-black tamil-font animate-pulse">Viyabaari Loading...</h1>
-          </div>
-      );
-  }
-
   if (!user) return <AuthScreen onLogin={u => { setUser(u); localStorage.setItem('viyabaari_active_user', JSON.stringify(u)); window.location.reload(); }} language={language} t={t} isOnline={isOnline} />;
 
   return (
     <div className="max-w-md mx-auto min-h-screen bg-slate-50 flex flex-col shadow-xl">
       <Toast message={toast.msg} show={toast.show} isError={toast.isError} onClose={() => setToast({ ...toast, show: false })} />
-      <header className="bg-indigo-600 text-white p-3 sticky top-0 z-10 shadow-md flex flex-wrap gap-2 justify-between items-center">
-        <div className="flex items-center gap-2"><h1 className="text-lg font-bold tamil-font truncate">{t.appName}</h1></div>
-        <div className="flex gap-2 items-center">
-            {isOnline && user.uid && <button onClick={() => fetchData(true)} className={`p-2 bg-white/10 hover:bg-white/20 rounded-full transition ${isSyncing ? 'animate-spin' : ''}`}><RefreshCw size={18} /></button>}
-            <button onClick={() => { setEditingStock(null); setIsAddingStock(true); }} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition"><PlusCircle size={18}/></button>
-            <button onClick={() => { setEditingTransaction(null); setIsAddingTransaction(true); }} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition"><ArrowLeftRight size={18}/></button>
+      <header className="bg-indigo-600 text-white p-4 sticky top-0 z-10 shadow-md flex justify-between items-center">
+        <div className="flex items-center gap-2"><h1 className="text-xl font-bold tamil-font">{t.appName}</h1></div>
+        <div className="flex gap-4">
+            {isOnline && user.uid && <button onClick={() => fetchData(true)} className={`p-1 rounded-full ${isSyncing ? 'animate-spin' : ''}`}><RefreshCw size={22} /></button>}
+            <button onClick={() => { setEditingStock(null); setIsAddingStock(true); }} className="p-1 rounded-full"><PlusCircle size={22}/></button>
+            <button onClick={() => { setEditingTransaction(null); setIsAddingTransaction(true); }} className="p-1 rounded-full"><ArrowLeftRight size={22}/></button>
         </div>
       </header>
       <main className="flex-1 overflow-y-auto pb-24">
@@ -591,20 +507,23 @@ const App: React.FC = () => {
         {activeTab === 'stock' && <Inventory stocks={stocks} onDelete={handleDeleteStock} onEdit={s => { setEditingStock(s); setIsAddingStock(true); }} language={language} />}
         {activeTab === 'accounts' && <Accounting transactions={transactions} language={language} onEdit={t => { setEditingTransaction(t); setIsAddingTransaction(true); }} onClear={handleClearTransactions} />}
         {activeTab === 'profile' && <Profile user={user} updateUser={setUser} stocks={stocks} transactions={transactions} onLogout={async () => { 
-            try { await supabase.auth.signOut(); } catch(e) {}
-            localStorage.clear();
-            sessionStorage.clear();
+            await supabase.auth.signOut(); 
             setUser(null); 
+            localStorage.removeItem('viyabaari_active_user'); 
+            // Clear any other session data if needed
+            sessionStorage.clear();
+            // Force reload to clear any in-memory state
+            window.location.reload(); 
         }} onRestore={d => {}} language={language} onLanguageChange={(l) => { setLanguage(l); localStorage.setItem('viyabaari_lang', l); }} onClearTransactions={handleClearTransactions} onResetApp={() => {}} onSetupServer={() => setShowDatabaseConfig(true)} />}
       </main>
       {showDatabaseConfig && <DatabaseConfigModal onClose={() => setShowDatabaseConfig(false)} language={language} />}
       {isAddingStock && <AddStockModal onSave={saveStock} onClose={() => setIsAddingStock(false)} initialData={editingStock || undefined} language={language} t={t} />}
       {isAddingTransaction && <AddTransactionModal onSave={saveTransaction} onClose={() => setIsAddingTransaction(false)} initialData={editingTransaction || undefined} language={language} t={t} />}
-      <nav className="bg-indigo-600 border-t border-indigo-500 fixed bottom-0 w-full max-w-md flex justify-around p-3 z-10 text-white">
-        <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center transition ${activeTab === 'dashboard' ? 'opacity-100 scale-110' : 'opacity-60 hover:opacity-80'}`}><LayoutDashboard size={24} /><span className="text-[10px] tamil-font mt-1">{t.dashboard}</span></button>
-        <button onClick={() => setActiveTab('stock')} className={`flex flex-col items-center transition ${activeTab === 'stock' ? 'opacity-100 scale-110' : 'opacity-60 hover:opacity-80'}`}><Package size={24} /><span className="text-[10px] tamil-font mt-1">{t.stock}</span></button>
-        <button onClick={() => setActiveTab('accounts')} className={`flex flex-col items-center transition ${activeTab === 'accounts' ? 'opacity-100 scale-110' : 'opacity-60 hover:opacity-80'}`}><ArrowLeftRight size={24} /><span className="text-[10px] tamil-font mt-1">{t.accounts}</span></button>
-        <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center transition ${activeTab === 'profile' ? 'opacity-100 scale-110' : 'opacity-60 hover:opacity-80'}`}><UserIcon size={24} /><span className="text-[10px] tamil-font mt-1">{t.profile}</span></button>
+      <nav className="bg-white border-t fixed bottom-0 w-full max-w-md flex justify-around p-3 z-10">
+        <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center ${activeTab === 'dashboard' ? 'text-indigo-600' : 'text-gray-400'}`}><LayoutDashboard size={24} /><span className="text-[10px] tamil-font">{t.dashboard}</span></button>
+        <button onClick={() => setActiveTab('stock')} className={`flex flex-col items-center ${activeTab === 'stock' ? 'text-indigo-600' : 'text-gray-400'}`}><Package size={24} /><span className="text-[10px] tamil-font">{t.stock}</span></button>
+        <button onClick={() => setActiveTab('accounts')} className={`flex flex-col items-center ${activeTab === 'accounts' ? 'text-indigo-600' : 'text-gray-400'}`}><ArrowLeftRight size={24} /><span className="text-[10px] tamil-font">{t.accounts}</span></button>
+        <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center ${activeTab === 'profile' ? 'text-indigo-600' : 'text-gray-400'}`}><UserIcon size={24} /><span className="text-[10px] tamil-font">{t.profile}</span></button>
       </nav>
       {isLoading && <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-[110] backdrop-blur-[1px]"><div className="bg-white p-6 rounded-3xl shadow-2xl flex flex-col items-center gap-4 animate-in zoom-in duration-300"><Loader2 className="animate-spin text-indigo-600" size={40}/><p className="font-black text-gray-800 tamil-font">சேமிக்கப்படுகிறது...</p></div></div>}
     </div>
@@ -629,7 +548,7 @@ const AuthScreen: React.FC<{ onLogin: (u: User) => void; language: 'ta' | 'en'; 
         } else if (mode === 'LOGIN') {
            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
            if (error) throw error;
-           if (data.user) onLogin({ uid: data.user.id, email: data.user.email || '', name: data.user.user_metadata.full_name || data.user.user_metadata.name || 'User', avatar: data.user.user_metadata.avatar_url, isLoggedIn: true });
+           if (data.user) onLogin({ uid: data.user.id, email: data.user.email || '', name: data.user.user_metadata.name || 'User', isLoggedIn: true });
         } else {
            const { error } = await supabase.auth.resetPasswordForEmail(email);
            if (error) throw error;

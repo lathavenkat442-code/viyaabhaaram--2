@@ -125,9 +125,7 @@ export const TRANSLATIONS = {
 export const CATEGORIES = [
   'ஆண்கள் ஆடை',
   'பெண்கள் ஆடை',
-  'டாப்ஸ்',
-  'கணவன் மனைவி காம்போ',
-  'ஃபேமிலி காம்போ'
+  'டாப்ஸ்'
 ];
 
 export const SHIRT_SIZES = [
