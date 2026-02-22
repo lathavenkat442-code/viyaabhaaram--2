@@ -386,10 +386,28 @@ const App: React.FC = () => {
         if (sData) {
           const freshS = sData.map((r: any) => {
               // Try content field first, then fallback to row itself if it has id
+              let item = null;
               if (r.content) {
-                  try { return typeof r.content === 'string' ? JSON.parse(r.content) : r.content; } catch(e) { return null; }
+                  try { item = typeof r.content === 'string' ? JSON.parse(r.content) : r.content; } catch(e) { item = null; }
+              } else if (r.id) {
+                  item = r;
               }
-              return r.id ? r : null;
+              
+              // Normalize old data structure to new variants structure
+              if (item && (!item.variants || !Array.isArray(item.variants))) {
+                  item.variants = [{
+                      id: 'default-' + item.id,
+                      imageUrl: item.imageUrl || '',
+                      sizeStocks: [{
+                          size: item.size || 'General',
+                          quantity: item.quantity || 0,
+                          color: '',
+                          sleeve: ''
+                      }]
+                  }];
+              }
+              
+              return item;
           }).filter(Boolean);
           
           setStocks(freshS);
@@ -591,7 +609,9 @@ const App: React.FC = () => {
         {activeTab === 'stock' && <Inventory stocks={stocks} onDelete={handleDeleteStock} onEdit={s => { setEditingStock(s); setIsAddingStock(true); }} language={language} />}
         {activeTab === 'accounts' && <Accounting transactions={transactions} language={language} onEdit={t => { setEditingTransaction(t); setIsAddingTransaction(true); }} onClear={handleClearTransactions} />}
         {activeTab === 'profile' && <Profile user={user} updateUser={setUser} stocks={stocks} transactions={transactions} onLogout={async () => { 
-            try { await supabase.auth.signOut(); } catch(e) {}
+            // Fire and forget logout to prevent UI lag
+            supabase.auth.signOut().catch(console.error);
+            
             // Only clear session-specific items, NOT business data (stocks/txns)
             localStorage.removeItem('viyabaari_active_user');
             // Keep: viyabaari_stocks_*, viyabaari_txns_*, viyabaari_lang, viyabaari_supabase_*
