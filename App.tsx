@@ -56,7 +56,7 @@ const DatabaseConfigModal: React.FC<{ onClose: () => void; language: 'ta' | 'en'
     const [setupKey, setSetupKey] = useState(localStorage.getItem('viyabaari_supabase_key') || '');
     const handleSaveConfig = (e: React.FormEvent) => {
         e.preventDefault();
-        saveSupabaseConfig(setupUrl.replace(/\+/g, ''), setupKey.replace(/\s+/g, ''));
+        saveSupabaseConfig(setupUrl.replace(/\s+/g, ''), setupKey.replace(/\s+/g, ''));
     };
     return (
         <div className="fixed inset-0 bg-black/70 z-[70] flex items-center justify-center p-4 backdrop-blur-sm">
