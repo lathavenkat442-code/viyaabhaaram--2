@@ -41,6 +41,16 @@ const base64ToBlob = (base64: string) => {
   return new Blob([ab], { type: mimeString });
 };
 
+const generateUUID = () => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+};
+
 const DatabaseConfigModal: React.FC<{ onClose: () => void; language: 'ta' | 'en' }> = ({ onClose, language }) => {
     const [setupUrl, setSetupUrl] = useState(localStorage.getItem('viyabaari_supabase_url') || '');
     const [setupKey, setSetupKey] = useState(localStorage.getItem('viyabaari_supabase_key') || '');
@@ -508,7 +518,7 @@ const App: React.FC = () => {
             return { ...rest, imageUrl: finalImageUrl };
         }));
 
-        const newItem = { ...itemData, variants: processedVariants, id: id || Date.now().toString(), lastUpdated: Date.now() };
+        const newItem = { ...itemData, variants: processedVariants, id: id || generateUUID(), lastUpdated: Date.now() };
         
         if (user.uid && isOnline && isSupabaseConfigured) {
           // Use .select() to ensure confirmed save
@@ -568,15 +578,8 @@ const App: React.FC = () => {
     setIsLoading(true);
     const emailKey = getEmailKey(user.email);
     try {
-        const newTxn = { ...txnData, id: id || Date.now().toString(), date: date || Date.now() };
+        const newTxn = { ...txnData, id: id || generateUUID(), date: date || Date.now() };
         
-        // Immediate UI Update
-        setTransactions(prev => {
-          const updated = id ? prev.map(t => t.id === id ? newTxn : t) : [newTxn, ...prev];
-          try { localStorage.setItem(`viyabaari_txns_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
-          return updated;
-        });
-
         if (user.uid && isOnline && isSupabaseConfigured) {
           const { data, error } = await supabase.from('transactions')
             .upsert({ id: newTxn.id, user_id: user.uid, content: newTxn })
@@ -588,12 +591,29 @@ const App: React.FC = () => {
              try {
                const confirmedTxn = typeof data[0].content === 'string' ? JSON.parse(data[0].content) : data[0].content;
                if (confirmedTxn && confirmedTxn.id) {
-                 setTransactions(prev => prev.map(t => t.id === confirmedTxn.id ? confirmedTxn : t));
+                 setTransactions(prev => {
+                    const updated = id ? prev.map(t => t.id === confirmedTxn.id ? confirmedTxn : t) : [confirmedTxn, ...prev];
+                    try { localStorage.setItem(`viyabaari_txns_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
+                    return updated;
+                 });
                }
              } catch (e) {
                console.error("Error parsing confirmed txn", e);
+               // Fallback
+               setTransactions(prev => {
+                  const updated = id ? prev.map(t => t.id === newTxn.id ? newTxn : t) : [newTxn, ...prev];
+                  try { localStorage.setItem(`viyabaari_txns_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
+                  return updated;
+               });
              }
           }
+        } else {
+            // Offline Mode
+            setTransactions(prev => {
+              const updated = id ? prev.map(t => t.id === id ? newTxn : t) : [newTxn, ...prev];
+              try { localStorage.setItem(`viyabaari_txns_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
+              return updated;
+            });
         }
         
         setIsAddingTransaction(false); 
