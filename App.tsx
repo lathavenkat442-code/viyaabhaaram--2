@@ -502,32 +502,46 @@ const App: React.FC = () => {
 
         const newItem = { ...itemData, variants: processedVariants, id: id || Date.now().toString(), lastUpdated: Date.now() };
         
-        // Immediate Optimistic Update
-        setStocks(prev => {
-          const updated = id ? prev.map(s => s.id === id ? newItem : s) : [newItem, ...prev];
-          try { localStorage.setItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
-          return updated;
-        });
-
         if (user.uid && isOnline && isSupabaseConfigured) {
           // Use .select() to ensure confirmed save
           const { data, error } = await supabase.from('stock_items')
             .upsert({ id: newItem.id, user_id: user.uid, content: newItem, last_updated: newItem.lastUpdated })
             .select();
           
-          if (error) throw error;
+          if (error) {
+              console.error("Database insert error:", error);
+              throw error;
+          }
           
           // Double verify state with returned data if it's different
           if (data && data[0] && data[0].content) {
             try {
               const confirmedItem = typeof data[0].content === 'string' ? JSON.parse(data[0].content) : data[0].content;
               if (confirmedItem && confirmedItem.id) {
-                setStocks(prev => prev.map(s => s.id === confirmedItem.id ? confirmedItem : s));
+                 // Update State ONLY after successful DB save
+                 setStocks(prev => {
+                    const updated = id ? prev.map(s => s.id === confirmedItem.id ? confirmedItem : s) : [confirmedItem, ...prev];
+                    try { localStorage.setItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
+                    return updated;
+                 });
               }
             } catch (e) {
               console.error("Error parsing confirmed item", e);
+              // Fallback to newItem if parsing fails but save was successful
+              setStocks(prev => {
+                const updated = id ? prev.map(s => s.id === newItem.id ? newItem : s) : [newItem, ...prev];
+                try { localStorage.setItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
+                return updated;
+             });
             }
           }
+        } else {
+            // Offline Mode: Just update local state
+            setStocks(prev => {
+                const updated = id ? prev.map(s => s.id === newItem.id ? newItem : s) : [newItem, ...prev];
+                try { localStorage.setItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
+                return updated;
+            });
         }
         
         setIsAddingStock(false); 
