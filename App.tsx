@@ -525,9 +525,9 @@ const App: React.FC = () => {
         setIsAddingStock(false); 
         setEditingStock(null);
         setToast({ msg: language === 'ta' ? 'சரக்கு சேமிக்கப்பட்டது!' : 'Stock Saved!', show: true });
-    } catch (err) { 
+    } catch (err: any) { 
         console.error("Save stock failed:", err);
-        setToast({ msg: 'Error saving stock', show: true, isError: true }); 
+        setToast({ msg: err.message || 'Error saving stock', show: true, isError: true }); 
     } finally { 
         setIsLoading(false); 
     }
@@ -569,9 +569,9 @@ const App: React.FC = () => {
         setIsAddingTransaction(false); 
         setEditingTransaction(null);
         setToast({ msg: language === 'ta' ? 'கணக்கு சேமிக்கப்பட்டது!' : 'Entry Saved!', show: true });
-    } catch (err) { 
+    } catch (err: any) { 
         console.error("Save transaction failed:", err);
-        setToast({ msg: 'Error saving transaction', show: true, isError: true }); 
+        setToast({ msg: err.message || 'Error saving transaction', show: true, isError: true }); 
     } finally { 
         setIsLoading(false); 
     }
