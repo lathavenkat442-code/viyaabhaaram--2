@@ -466,16 +466,18 @@ const App: React.FC = () => {
         const processedVariants = await Promise.all(variantsToProcess.map(async (v: StockVariant) => {
             let finalImageUrl = v.imageUrl || '';
             
-            // If there's a file to upload
-            if (v.imageFile) {
+            if (finalImageUrl && finalImageUrl.startsWith('data:image')) {
                 try {
-                    const fileExt = v.imageFile.name.split('.').pop();
+                    const response = await fetch(finalImageUrl);
+                    const blob = await response.blob();
+                    
+                    const fileExt = blob.type.split('/')[1] || 'jpeg';
                     const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
                     const filePath = fileName;
 
                     const { error: uploadError } = await supabase.storage
                         .from('products')
-                        .upload(filePath, v.imageFile);
+                        .upload(filePath, blob, { contentType: blob.type || 'image/jpeg', upsert: true });
 
                     if (uploadError) {
                         console.warn("Image upload failed, clearing image URL");
@@ -490,9 +492,6 @@ const App: React.FC = () => {
                     console.error("Image upload exception for variant", v.id, e);
                     finalImageUrl = '';
                 }
-            } else if (finalImageUrl && finalImageUrl.startsWith('data:image')) {
-                // Safety check: if Base64 exists but no file, clear it
-                finalImageUrl = '';
             }
 
             // Return variant without imageFile and with updated imageUrl
