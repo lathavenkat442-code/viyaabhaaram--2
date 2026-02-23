@@ -469,13 +469,22 @@ const App: React.FC = () => {
             // If there's a file to upload
             if (v.imageFile) {
                 try {
-                    const uploadedUrl = await uploadImage(v.imageFile, 'products');
-                    if (uploadedUrl) {
-                        finalImageUrl = uploadedUrl;
-                    } else {
-                        // Upload failed, clear Base64 to avoid DB bloat
+                    const fileExt = v.imageFile.name.split('.').pop();
+                    const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+                    const filePath = fileName;
+
+                    const { error: uploadError } = await supabase.storage
+                        .from('products')
+                        .upload(filePath, v.imageFile);
+
+                    if (uploadError) {
                         console.warn("Image upload failed, clearing image URL");
                         finalImageUrl = ''; 
+                    } else {
+                        const { data: { publicUrl } } = supabase.storage
+                            .from('products')
+                            .getPublicUrl(filePath);
+                        finalImageUrl = publicUrl;
                     }
                 } catch (e) {
                     console.error("Image upload exception for variant", v.id, e);
