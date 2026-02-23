@@ -306,10 +306,10 @@ const Profile: React.FC<ProfileProps> = ({ user, updateUser, stocks, transaction
         <div className="relative z-10">
           <div className="relative w-24 h-24 mx-auto mb-4">
             <div className="w-24 h-24 bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-full flex items-center justify-center text-white shadow-2xl border-4 border-white overflow-hidden">
-               {user.avatar ? (
-                 <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
+               {user?.avatar ? (
+                 <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
                ) : (
-                 <span className="text-3xl font-black">{user.name[0].toUpperCase()}</span>
+                 <span className="text-3xl font-black">{user?.name?.[0]?.toUpperCase() || 'U'}</span>
                )}
             </div>
             <button onClick={() => setIsEditingProfile(true)} className="absolute bottom-0 right-0 bg-white p-1.5 rounded-full shadow-md text-indigo-600 hover:bg-indigo-50 transition">
@@ -599,7 +599,7 @@ const Profile: React.FC<ProfileProps> = ({ user, updateUser, stocks, transaction
                  <label className="relative cursor-pointer group">
                     <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-indigo-100 group-hover:border-indigo-300 transition">
                        {editAvatar ? (
-                           <img src={editAvatar} className="w-full h-full object-cover" alt="Avatar" />
+                           <img src={editAvatar} className="w-full h-full object-cover" alt="Avatar" onError={(e) => (e.currentTarget.src = '')} />
                        ) : (
                            <div className="w-full h-full bg-indigo-50 flex items-center justify-center text-indigo-300"><UserIcon size={40}/></div>
                        )}

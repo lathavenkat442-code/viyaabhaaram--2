@@ -348,13 +348,28 @@ const App: React.FC = () => {
         });
       } else {
         const savedUser = localStorage.getItem('viyabaari_active_user');
-        if (savedUser) { try { setUser(JSON.parse(savedUser)); } catch(e) { localStorage.removeItem('viyabaari_active_user'); } }
+        if (savedUser) { 
+            try { 
+                const parsed = JSON.parse(savedUser);
+                if (parsed && typeof parsed === 'object') setUser(parsed);
+            } catch(e) { 
+                console.error("Corrupt user data", e);
+                localStorage.removeItem('viyabaari_active_user'); 
+            } 
+        }
       }
       setIsAppLoading(false);
     }).catch(err => {
       console.error("Session check failed", err);
       const savedUser = localStorage.getItem('viyabaari_active_user');
-      if (savedUser) { try { setUser(JSON.parse(savedUser)); } catch(e) {} }
+      if (savedUser) { 
+          try { 
+              const parsed = JSON.parse(savedUser);
+              if (parsed && typeof parsed === 'object') setUser(parsed);
+          } catch(e) {
+              console.error("Corrupt user data", e);
+          } 
+      }
       setIsAppLoading(false);
     });
   }, []);
@@ -367,9 +382,21 @@ const App: React.FC = () => {
     try {
         const localS = localStorage.getItem(`viyabaari_stocks_${emailKey}`);
         const localT = localStorage.getItem(`viyabaari_txns_${emailKey}`);
-        if (localS) setStocks(JSON.parse(localS));
-        if (localT) setTransactions(JSON.parse(localT));
-    } catch (e) { console.error("Local load failed"); }
+        
+        if (localS) {
+            try {
+                const parsedS = JSON.parse(localS);
+                if (Array.isArray(parsedS)) setStocks(parsedS);
+            } catch (e) { console.error("Local stocks corrupt", e); }
+        }
+        
+        if (localT) {
+            try {
+                const parsedT = JSON.parse(localT);
+                if (Array.isArray(parsedT)) setTransactions(parsedT);
+            } catch (e) { console.error("Local txns corrupt", e); }
+        }
+    } catch (e) { console.error("Local load failed", e); }
 
     if (user.uid && isOnline && isSupabaseConfigured) {
       if (isManualRefresh) setIsSyncing(true);
@@ -379,7 +406,10 @@ const App: React.FC = () => {
         if (sError) console.error("Fetch stocks error:", sError);
         if (sData) {
           const freshS = sData.map((r: any) => {
-              try { return typeof r.content === 'string' ? JSON.parse(r.content) : r.content; } catch(e) { return null; }
+              try { 
+                  const parsed = typeof r.content === 'string' ? JSON.parse(r.content) : r.content;
+                  return (parsed && typeof parsed === 'object') ? parsed : null;
+              } catch(e) { return null; }
           }).filter(Boolean);
           setStocks(freshS);
           try { localStorage.setItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(freshS)); } catch(e) {}
@@ -390,7 +420,10 @@ const App: React.FC = () => {
         if (tError) console.error("Fetch txns error:", tError);
         if (tData) {
           const freshT = tData.map((r: any) => {
-              try { return typeof r.content === 'string' ? JSON.parse(r.content) : r.content; } catch(e) { return null; }
+              try { 
+                  const parsed = typeof r.content === 'string' ? JSON.parse(r.content) : r.content;
+                  return (parsed && typeof parsed === 'object') ? parsed : null;
+              } catch(e) { return null; }
           }).filter(Boolean);
           freshT.sort((a: any, b: any) => (b.date || 0) - (a.date || 0));
           setTransactions(freshT);
@@ -409,8 +442,9 @@ const App: React.FC = () => {
     const emailKey = getEmailKey(user.email);
     try {
         // Process image uploads for variants
-        const processedVariants = await Promise.all(itemData.variants.map(async (v: StockVariant) => {
-            let finalImageUrl = v.imageUrl;
+        const variantsToProcess = itemData.variants || [];
+        const processedVariants = await Promise.all(variantsToProcess.map(async (v: StockVariant) => {
+            let finalImageUrl = v.imageUrl || '';
             
             // If there's a file to upload
             if (v.imageFile) {
@@ -427,7 +461,7 @@ const App: React.FC = () => {
                     console.error("Image upload exception for variant", v.id, e);
                     finalImageUrl = '';
                 }
-            } else if (v.imageUrl && v.imageUrl.startsWith('data:image')) {
+            } else if (finalImageUrl && finalImageUrl.startsWith('data:image')) {
                 // Safety check: if Base64 exists but no file, clear it
                 finalImageUrl = '';
             }
