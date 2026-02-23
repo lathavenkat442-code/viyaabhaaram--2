@@ -386,15 +386,35 @@ const App: React.FC = () => {
         if (localS) {
             try {
                 const parsedS = JSON.parse(localS);
-                if (Array.isArray(parsedS)) setStocks(parsedS);
-            } catch (e) { console.error("Local stocks corrupt", e); }
+                if (Array.isArray(parsedS)) {
+                    setStocks(parsedS);
+                } else {
+                    throw new Error("Stocks data is not an array");
+                }
+            } catch (e) { 
+                console.error("Local stocks corrupt/old", e);
+                localStorage.removeItem(`viyabaari_stocks_${emailKey}`);
+                setStocks([]);
+            }
+        } else {
+            setStocks([]);
         }
         
         if (localT) {
             try {
                 const parsedT = JSON.parse(localT);
-                if (Array.isArray(parsedT)) setTransactions(parsedT);
-            } catch (e) { console.error("Local txns corrupt", e); }
+                if (Array.isArray(parsedT)) {
+                    setTransactions(parsedT);
+                } else {
+                    throw new Error("Transactions data is not an array");
+                }
+            } catch (e) { 
+                console.error("Local txns corrupt/old", e);
+                localStorage.removeItem(`viyabaari_txns_${emailKey}`);
+                setTransactions([]);
+            }
+        } else {
+            setTransactions([]);
         }
     } catch (e) { console.error("Local load failed", e); }
 

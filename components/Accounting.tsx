@@ -19,14 +19,14 @@ const Accounting: React.FC<AccountingProps> = ({ transactions, language, onEdit,
 
   // Calculate Summary (Based on ALL transactions to show true status)
   const summary = useMemo(() => {
-    const inc = transactions.filter(t => t.type === 'INCOME').reduce((a, b) => a + b.amount, 0);
-    const exp = transactions.filter(t => t.type === 'EXPENSE').reduce((a, b) => a + b.amount, 0);
+    const inc = (transactions || []).filter(t => t.type === 'INCOME').reduce((a, b) => a + b.amount, 0);
+    const exp = (transactions || []).filter(t => t.type === 'EXPENSE').reduce((a, b) => a + b.amount, 0);
     return { income: inc, expense: exp, balance: inc - exp };
   }, [transactions]);
 
   // Filter Transactions for List View
   const filteredTransactions = useMemo(() => {
-    return transactions.filter(txn => {
+    return (transactions || []).filter(txn => {
         const matchesType = filterType === 'ALL' || txn.type === filterType;
         const query = searchQuery.toLowerCase();
         const matchesSearch = txn.category.toLowerCase().includes(query) || 
@@ -68,7 +68,7 @@ const Accounting: React.FC<AccountingProps> = ({ transactions, language, onEdit,
       // Get all unique party names
       const partyMap: Record<string, { income: number, expense: number, txns: Transaction[] }> = {};
       
-      transactions.forEach(txn => {
+      (transactions || []).forEach(txn => {
           if (!txn.partyName) return;
           const name = txn.partyName.trim();
           if (!partyMap[name]) partyMap[name] = { income: 0, expense: 0, txns: [] };

@@ -426,40 +426,41 @@ const Inventory: React.FC<{ stocks: StockItem[]; onDelete: (id: string) => Promi
   const t = TRANSLATIONS[language];
 
   const filtered = useMemo(() => {
-    let result = stocks.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
+    let result = (stocks || []).filter(s => s?.name?.toLowerCase().includes(search.toLowerCase()));
     if (filterLowStock) {
-      result = result.filter(s => s.variants.some(v => v.sizeStocks.some(ss => ss.quantity < 5)));
+      result = result.filter(s => s?.variants?.some(v => v?.sizeStocks?.some(ss => ss?.quantity < 5)));
     }
     return result;
   }, [stocks, search, filterLowStock]);
 
   const handleShare = async (item: StockItem) => {
     try {
-      const totalQty = item.variants.reduce((acc, v) => acc + v.sizeStocks.reduce((s, ss) => s + ss.quantity, 0), 0);
+      const variants = item?.variants || [];
+      const totalQty = variants.reduce((acc, v) => acc + (v?.sizeStocks?.reduce((s, ss) => s + (ss?.quantity || 0), 0) || 0), 0);
       
       // Construct detailed text with ALL variants
       let detailsText = "";
-      item.variants.forEach((v, idx) => {
+      variants.forEach((v, idx) => {
           // Enhaced text for sharing colors/sleeves
-          const stocksText = v.sizeStocks.map(ss => {
-              if (ss.color) return `${ss.color} ${ss.sleeve ? '('+ss.sleeve+')' : ''} ${ss.size && ss.size !== 'General' ? '['+ss.size+']' : ''}: ${ss.quantity}`;
-              return `${ss.size}: ${ss.quantity}`;
+          const stocksText = (v?.sizeStocks || []).map(ss => {
+              if (ss?.color) return `${ss.color} ${ss.sleeve ? '('+ss.sleeve+')' : ''} ${ss.size && ss.size !== 'General' ? '['+ss.size+']' : ''}: ${ss.quantity}`;
+              return `${ss?.size}: ${ss?.quantity}`;
           }).join(', ');
           detailsText += `\n📸 Model ${idx + 1}: ${stocksText || 'No Stock'}`;
       });
 
       const text = language === 'ta' 
-        ? `🛍️ *${item.name}*\n💰 விலை: ₹${item.price}\n📦 வகை: ${item.category}\n\n📊 *ஸ்டாக் விவரம்:*${detailsText}\n\n🔢 மொத்த இருப்பு: ${totalQty}`
-        : `🛍️ *${item.name}*\n💰 Price: ₹${item.price}\n📦 Category: ${item.category}\n\n📊 *Stock Details:*${detailsText}\n\n🔢 Total Stock: ${totalQty}`;
+        ? `🛍️ *${item?.name}*\n💰 விலை: ₹${item?.price}\n📦 வகை: ${item?.category}\n\n📊 *ஸ்டாக் விவரம்:*${detailsText}\n\n🔢 மொத்த இருப்பு: ${totalQty}`
+        : `🛍️ *${item?.name}*\n💰 Price: ₹${item?.price}\n📦 Category: ${item?.category}\n\n📊 *Stock Details:*${detailsText}\n\n🔢 Total Stock: ${totalQty}`;
 
       const shareData: any = {
-        title: item.name,
+        title: item?.name,
         text: text,
       };
 
       // Collect ALL images
       const files: File[] = [];
-      const validVariants = item.variants.filter(v => v.imageUrl && v.imageUrl.startsWith('data:'));
+      const validVariants = variants.filter(v => v?.imageUrl && v.imageUrl.startsWith('data:'));
 
       // Process images (Limit to 10 to avoid browser crash/limit issues)
       const maxImages = Math.min(validVariants.length, 10);

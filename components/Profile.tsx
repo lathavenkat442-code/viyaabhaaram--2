@@ -180,11 +180,11 @@ const Profile: React.FC<ProfileProps> = ({ user, updateUser, stocks, transaction
 
   const exportStocks = () => {
     let csvContent = "ID,Name,Category,VariantID,Size,Quantity,Price,LastUpdated\n";
-    stocks.forEach(item => {
+    (stocks || []).forEach(item => {
       // Handle variants
-      if (item.variants) {
+      if (item?.variants) {
           item.variants.forEach((variant, vIdx) => {
-              variant.sizeStocks.forEach(ss => {
+              (variant?.sizeStocks || []).forEach(ss => {
                   csvContent += `${item.id},"${item.name}",${item.category},"${vIdx + 1}","${ss.size}",${ss.quantity},${item.price},${new Date(item.lastUpdated).toISOString()}\n`;
               });
           });
@@ -198,7 +198,7 @@ const Profile: React.FC<ProfileProps> = ({ user, updateUser, stocks, transaction
 
   const exportTransactions = () => {
     let csvContent = "ID,Date,Type,Amount,Category,Description\n";
-    transactions.forEach(txn => {
+    (transactions || []).forEach(txn => {
       csvContent += `${txn.id},${new Date(txn.date).toISOString()},${txn.type},${txn.amount},${txn.category},"${txn.description}"\n`;
     });
     downloadFile(csvContent, `Viyabaari_Accounts_${user.name}.csv`, 'text/csv;charset=utf-8;');
@@ -215,16 +215,16 @@ const Profile: React.FC<ProfileProps> = ({ user, updateUser, stocks, transaction
               const includePhotos = user.includePhotosInBackup !== false; // Default to true if undefined
               
               const stocksToSave = includePhotos 
-                ? stocks 
-                : stocks.map(s => ({ 
+                ? (stocks || []) 
+                : (stocks || []).map(s => ({ 
                     ...s, 
-                    variants: s.variants.map(v => ({...v, imageUrl: ''})) 
+                    variants: (s.variants || []).map(v => ({...v, imageUrl: ''})) 
                   })); // Remove images from variants if disabled
 
               const backup = {
                 user: { ...user, backupEmail: user.backupEmail || user.email },
                 stocks: stocksToSave,
-                transactions,
+                transactions: transactions || [],
                 timestamp: Date.now(),
                 backupType: 'full'
               };

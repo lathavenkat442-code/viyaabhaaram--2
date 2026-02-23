@@ -1,130 +1,123 @@
-import React from 'react';
-import { useApp } from '../context/AppContext';
-import { TrendingUp, Package, AlertTriangle, IndianRupee } from 'lucide-react';
-import { format } from 'date-fns';
 
-const StatCard = ({ title, value, icon: Icon, color, subtext }: { title: string; value: string; icon: any; color: string; subtext?: string }) => (
-  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-start justify-between">
-    <div>
-      <p className="text-sm font-medium text-gray-500 font-tamil mb-1">{title}</p>
-      <h3 className="text-2xl font-bold text-gray-900 font-mono">{value}</h3>
-      {subtext && <p className="text-xs text-green-600 mt-1 font-medium">{subtext}</p>}
-    </div>
-    <div className={`p-3 rounded-xl ${color}`}>
-      <Icon className="w-6 h-6 text-white" />
-    </div>
-  </div>
-);
+import React, { useState, useEffect } from 'react';
+import { StockItem, Transaction, User } from '../types';
+import { TRANSLATIONS } from '../constants';
+import { TrendingUp, TrendingDown, Package, Sparkles, Lightbulb, Database, ChevronRight } from 'lucide-react';
+import { getBusinessInsights } from '../services/geminiService';
+import { isSupabaseConfigured } from '../supabaseClient';
 
-const Dashboard = () => {
-  const { stocks, transactions } = useApp();
+const Dashboard: React.FC<{ stocks: StockItem[]; transactions: Transaction[]; language: 'ta' | 'en'; user: User; onSetupServer: () => void }> = ({ stocks, transactions, language, user, onSetupServer }) => {
+  const [tips, setTips] = useState<string[]>([]);
+  const [loadingTips, setLoadingTips] = useState(false);
+  
+  const hasApiKey = (() => {
+    try { return typeof process !== 'undefined' && process.env && !!process.env.API_KEY; } catch { return false; }
+  })();
 
-  // Calculate Today's Sales
-  const today = new Date();
-  const todayStart = new Date(today.setHours(0, 0, 0, 0)).getTime();
-  const todaySales = transactions
-    .filter(t => t.type === 'INCOME' && t.date >= todayStart)
-    .reduce((sum, t) => sum + t.amount, 0);
+  const t = TRANSLATIONS[language];
 
-  // Calculate Total Stock Value
-  const totalStockValue = stocks.reduce((sum, item) => {
-    const stockQty = item.variants.reduce((vSum, v) => vSum + v.sizeStocks.reduce((sSum, s) => sSum + s.quantity, 0), 0);
-    return sum + (item.price * stockQty);
+  const totalIncome = (transactions || []).filter(t => t?.type === 'INCOME').reduce((acc, curr) => acc + (curr?.amount || 0), 0);
+  const totalExpense = (transactions || []).filter(t => t?.type === 'EXPENSE').reduce((acc, curr) => acc + (curr?.amount || 0), 0);
+  
+  const totalStockValue = (stocks || []).reduce((acc, curr) => {
+    const itemQty = curr?.variants ? curr.variants.reduce((vAcc, variant) => {
+        return vAcc + (variant?.sizeStocks?.reduce((sAcc, s) => sAcc + (s?.quantity || 0), 0) || 0);
+    }, 0) : 0;
+    return acc + ((curr?.price || 0) * itemQty);
   }, 0);
 
-  // Low Stock Items (less than 5)
-  const lowStockItems = stocks.filter(item => {
-    const totalQty = item.variants.reduce((vSum, v) => vSum + v.sizeStocks.reduce((sSum, s) => sSum + s.quantity, 0), 0);
-    return totalQty < 5;
-  });
+  useEffect(() => {
+    const fetchTips = async () => {
+      setLoadingTips(true);
+      const newTips = await getBusinessInsights(stocks || [], transactions || []);
+      setTips(newTips || []);
+      setLoadingTips(false);
+    };
+    const timer = setTimeout(fetchTips, 500);
+    return () => clearTimeout(timer);
+  }, [(stocks || []).length, (transactions || []).length]); 
+
+  const isGuestOrOffline = !isSupabaseConfigured || user?.email?.includes('guest') || !user?.uid;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900 font-tamil">வணக்கம், வியாபாரி!</h2>
-        <p className="text-sm text-gray-500">{format(new Date(), 'dd MMM yyyy')}</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard
-          title="இன்று விற்பனை (Today Sales)"
-          value={`₹${todaySales.toLocaleString()}`}
-          icon={TrendingUp}
-          color="bg-green-500"
-          subtext="+12% from yesterday"
-        />
-        <StatCard
-          title="சரக்கு மதிப்பு (Stock Value)"
-          value={`₹${totalStockValue.toLocaleString()}`}
-          icon={IndianRupee}
-          color="bg-blue-500"
-        />
-        <StatCard
-          title="குறைந்த இருப்பு (Low Stock)"
-          value={lowStockItems.length.toString()}
-          icon={AlertTriangle}
-          color="bg-orange-500"
-          subtext={lowStockItems.length > 0 ? "Action needed" : "All good"}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Transactions */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h3 className="text-lg font-bold text-gray-900 mb-4 font-tamil">சமீபத்திய பரிவர்த்தனைகள் (Recent)</h3>
-          <div className="space-y-4">
-            {transactions.slice(0, 5).map(t => (
-              <div key={t.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${t.type === 'INCOME' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                    {t.type === 'INCOME' ? <TrendingUp className="w-5 h-5" /> : <Package className="w-5 h-5" />}
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">{t.description}</p>
-                    <p className="text-xs text-gray-500">{format(t.date, 'hh:mm a')}</p>
-                  </div>
+    <div className="p-4 space-y-6">
+      {isGuestOrOffline && (
+        <div onClick={onSetupServer} className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between cursor-pointer shadow-sm">
+            <div className="flex items-center gap-3">
+                <div className="bg-amber-100 p-2 rounded-full text-amber-600"><Database size={20} /></div>
+                <div>
+                    <h3 className="font-bold text-amber-900 text-sm tamil-font">{language === 'ta' ? 'ஆன்லைன் அக்கவுண்ட் இணைக்க' : 'Connect Cloud Database'}</h3>
+                    <p className="text-[10px] text-amber-600 font-medium">{language === 'ta' ? 'தரவுகளை ஆன்லைனில் சேமிக்க கிளிக் செய்யவும்' : 'Sync data online'}</p>
                 </div>
-                <span className={`font-bold font-mono ${t.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}`}>
-                  {t.type === 'INCOME' ? '+' : '-'}₹{t.amount}
-                </span>
-              </div>
-            ))}
-            {transactions.length === 0 && (
-              <p className="text-center text-gray-500 py-4">No transactions yet.</p>
-            )}
+            </div>
+            <ChevronRight size={18} className="text-amber-400" />
+        </div>
+      )}
+
+      <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-3xl p-6 text-white shadow-lg">
+        <p className="text-indigo-100 text-sm tamil-font">{t.totalBalance}</p>
+        <h2 className="text-4xl font-bold mt-1">₹{(totalIncome - totalExpense).toLocaleString()}</h2>
+        <div className="flex gap-4 mt-6">
+          <div className="flex-1 bg-white/10 rounded-2xl p-3 backdrop-blur-sm">
+            <div className="flex items-center gap-2 mb-1">
+              <TrendingUp size={14} className="text-green-300" /><span className="text-xs text-indigo-100 tamil-font">{t.income}</span>
+            </div>
+            <p className="font-semibold">₹{totalIncome.toLocaleString()}</p>
+          </div>
+          <div className="flex-1 bg-white/10 rounded-2xl p-3 backdrop-blur-sm">
+            <div className="flex items-center gap-2 mb-1">
+              <TrendingDown size={14} className="text-red-300" /><span className="text-xs text-indigo-100 tamil-font">{t.expense}</span>
+            </div>
+            <p className="font-semibold">₹{totalExpense.toLocaleString()}</p>
           </div>
         </div>
+      </div>
 
-        {/* Low Stock Alert List */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h3 className="text-lg font-bold text-gray-900 mb-4 font-tamil">இருப்பு எச்சரிக்கை (Stock Alert)</h3>
-          <div className="space-y-3">
-            {lowStockItems.map(item => {
-               const totalQty = item.variants.reduce((vSum, v) => vSum + v.sizeStocks.reduce((sSum, s) => sSum + s.quantity, 0), 0);
-               return (
-                <div key={item.id} className="flex items-center justify-between p-3 border border-orange-100 bg-orange-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-orange-100">
-                      <Package className="w-5 h-5 text-orange-500" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{item.name}</p>
-                      <p className="text-xs text-orange-600 font-medium">Only {totalQty} left</p>
-                    </div>
-                  </div>
-                  <button className="px-3 py-1 bg-white text-orange-600 text-xs font-bold rounded border border-orange-200 shadow-sm">
-                    Order
-                  </button>
-                </div>
-               );
-            })}
-            {lowStockItems.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-8 text-gray-400">
-                <Package className="w-12 h-12 mb-2 opacity-20" />
-                <p>All items are well stocked!</p>
-              </div>
-            )}
+      <div className="bg-white rounded-2xl p-5 shadow-sm flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="bg-orange-100 p-3 rounded-xl"><Package className="text-orange-600" size={24} /></div>
+          <div>
+            <p className="text-xs text-gray-500 tamil-font">{language === 'ta' ? 'மொத்த சரக்கு மதிப்பு' : 'Total Stock Value'}</p>
+            <p className="text-xl font-bold">₹{totalStockValue.toLocaleString()}</p>
           </div>
+        </div>
+        <div className="text-right">
+          <p className="text-xs text-gray-400 font-medium">{(stocks || []).length} {language === 'ta' ? 'பொருட்கள்' : 'Items'}</p>
+        </div>
+      </div>
+
+      <div className="bg-indigo-50 rounded-2xl p-5 border border-indigo-100">
+        <div className="flex items-center gap-2 mb-4">
+          {hasApiKey ? <Sparkles className="text-indigo-600" size={18} /> : <Lightbulb className="text-amber-500" size={18} />}
+          <h3 className="font-bold text-indigo-900 tamil-font">{language === 'ta' ? 'AI ஆலோசனை' : 'Business Insights'}</h3>
+        </div>
+        {loadingTips ? (
+          <div className="animate-pulse space-y-2"><div className="h-4 bg-indigo-200 rounded w-3/4"></div></div>
+        ) : (
+          <ul className="space-y-3">
+            {tips.map((tip, i) => (
+              <li key={i} className="flex gap-3 text-sm text-indigo-800 tamil-font bg-white/50 p-2 rounded-lg">
+                <span className="font-bold text-indigo-400">#</span>{tip}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div>
+        <h3 className="font-bold text-gray-800 mb-4 tamil-font">{language === 'ta' ? 'சமீபத்திய வரவு செலவு' : 'Recent Transactions'}</h3>
+        <div className="space-y-3">
+          {(transactions || []).slice(0, 5).map(txn => (
+            <div key={txn?.id} className="bg-white p-4 rounded-xl shadow-sm flex items-center justify-between border-l-4" style={{ borderLeftColor: txn?.type === 'INCOME' ? '#10b981' : '#ef4444' }}>
+              <div>
+                <p className="font-medium text-gray-800">{txn?.description || txn?.category}</p>
+                <p className="text-[10px] text-gray-400">{txn?.date ? new Date(txn.date).toLocaleDateString(language) : ''}</p>
+              </div>
+              <p className={`font-bold ${txn?.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}`}>
+                {txn?.type === 'INCOME' ? '+' : '-'} ₹{txn?.amount || 0}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
     </div>
