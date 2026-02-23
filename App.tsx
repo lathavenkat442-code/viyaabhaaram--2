@@ -32,12 +32,21 @@ const Toast: React.FC<{ message: string; show: boolean; onClose: () => void; isE
     );
 };
 
+const base64ToBlob = (base64: string) => {
+  const byteString = atob(base64.split(',')[1]);
+  const mimeString = base64.split(',')[0].split(':')[1].split(';')[0];
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+  for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+  return new Blob([ab], { type: mimeString });
+};
+
 const DatabaseConfigModal: React.FC<{ onClose: () => void; language: 'ta' | 'en' }> = ({ onClose, language }) => {
     const [setupUrl, setSetupUrl] = useState(localStorage.getItem('viyabaari_supabase_url') || '');
     const [setupKey, setSetupKey] = useState(localStorage.getItem('viyabaari_supabase_key') || '');
     const handleSaveConfig = (e: React.FormEvent) => {
         e.preventDefault();
-        saveSupabaseConfig(setupUrl.trim(), setupKey.trim());
+        saveSupabaseConfig(setupUrl.replace(/\/$/, '').trim(), setupKey.trim());
     };
     return (
         <div className="fixed inset-0 bg-black/70 z-[70] flex items-center justify-center p-4 backdrop-blur-sm">
@@ -468,8 +477,7 @@ const App: React.FC = () => {
             
             if (finalImageUrl && finalImageUrl.startsWith('data:image')) {
                 try {
-                    const response = await fetch(finalImageUrl);
-                    const blob = await response.blob();
+                    const blob = base64ToBlob(finalImageUrl);
                     
                     const fileExt = blob.type.split('/')[1] || 'jpeg';
                     const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
