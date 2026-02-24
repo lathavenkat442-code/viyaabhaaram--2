@@ -9,7 +9,7 @@ import Profile from './components/Profile';
 import { supabase, isSupabaseConfigured, saveSupabaseConfig } from './supabaseClient';
 import { uploadImage } from './services/storage';
 import { 
-  LayoutDashboard, Package, ArrowLeftRight, User as UserIcon, PlusCircle, X, Camera, Trash2, Palette, ChevronDown, RefreshCw, Database, Loader2, WifiOff, CheckCircle2, AlertTriangle
+  LayoutDashboard, Package, ArrowLeftRight, User as UserIcon, CirclePlus, X, Camera, Trash2, Palette, ChevronDown, RefreshCw, Database, Loader2, WifiOff, CircleCheck, TriangleAlert, Pencil
 } from 'lucide-react';
 
 const EXPENSE_CATEGORIES = ['Salary', 'Rent', 'Tea/Snacks', 'Transport', 'Purchase', 'Sales', 'Electricity', 'Maintenance', 'Others'];
@@ -25,7 +25,7 @@ const Toast: React.FC<{ message: string; show: boolean; onClose: () => void; isE
     return (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-top duration-500">
             <div className={`px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 border backdrop-blur-md ${isError ? 'bg-red-600 border-red-500 text-white' : 'bg-green-600 border-green-500 text-white'}`}>
-                {isError ? <AlertTriangle size={20} /> : <CheckCircle2 size={20} />}
+                {isError ? <TriangleAlert size={20} /> : <CircleCheck size={20} />}
                 <span className="font-bold text-sm tamil-font whitespace-nowrap">{message}</span>
             </div>
         </div>
@@ -756,7 +756,7 @@ const App: React.FC = () => {
         <div className="flex items-center gap-2"><h1 className="text-lg sm:text-xl font-bold tamil-font truncate">{t.appName}</h1></div>
         <div className="flex gap-2 items-center">
             {isOnline && user.uid && <button onClick={() => fetchData(true)} className={`p-2 bg-white/10 hover:bg-white/20 rounded-full transition ${isSyncing ? 'animate-spin' : ''}`}><RefreshCw size={20} /></button>}
-            <button onClick={() => { setEditingStock(null); setIsAddingStock(true); }} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition"><PlusCircle size={20}/></button>
+            <button onClick={() => { setEditingStock(null); setIsAddingStock(true); }} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition"><CirclePlus size={20}/></button>
             <button onClick={() => { setEditingTransaction(null); setIsAddingTransaction(true); }} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition"><ArrowLeftRight size={20}/></button>
         </div>
       </header>

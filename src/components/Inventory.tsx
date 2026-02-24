@@ -1,7 +1,7 @@
 import React from 'react';
 import { StockItem } from '../types';
 import { TRANSLATIONS } from '../constants';
-import { Trash2, Edit2, Package } from 'lucide-react';
+import { Trash2, Pencil, Package } from 'lucide-react';
 
 interface InventoryProps {
   stocks: StockItem[];
@@ -35,7 +35,7 @@ const Inventory: React.FC<InventoryProps> = ({ stocks, onDelete, onEdit, languag
                 </div>
              </div>
              <div className="flex flex-col gap-2">
-                <button onClick={() => onEdit(item)} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition"><Edit2 size={16} /></button>
+                <button onClick={() => onEdit(item)} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition"><Pencil size={16} /></button>
                 <button onClick={() => onDelete(item.id)} className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition"><Trash2 size={16} /></button>
              </div>
           </div>

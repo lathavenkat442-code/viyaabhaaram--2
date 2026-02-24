@@ -1,7 +1,7 @@
 import React from 'react';
 import { Transaction } from '../types';
 import { TRANSLATIONS } from '../constants';
-import { ArrowUpRight, ArrowDownLeft, Trash2, Edit2 } from 'lucide-react';
+import { ArrowUpRight, ArrowDownLeft, Trash2 } from 'lucide-react';
 
 interface AccountingProps {
   transactions: Transaction[];
