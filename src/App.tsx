@@ -54,23 +54,83 @@ const generateUUID = () => {
 const DatabaseConfigModal: React.FC<{ onClose: () => void; language: 'ta' | 'en' }> = ({ onClose, language }) => {
     const [setupUrl, setSetupUrl] = useState(localStorage.getItem('viyabaari_supabase_url') || '');
     const [setupKey, setSetupKey] = useState(localStorage.getItem('viyabaari_supabase_key') || '');
+    const [showSql, setShowSql] = useState(false);
+
     const handleSaveConfig = (e: React.FormEvent) => {
         e.preventDefault();
         saveSupabaseConfig(setupUrl.replace(/\s+/g, ''), setupKey.replace(/\s+/g, ''));
     };
+
+    const sqlCommands = `
+-- Run this in Supabase SQL Editor
+create extension if not exists "uuid-ossp";
+
+create table if not exists stock_items (
+  id uuid primary key,
+  user_id uuid references auth.users not null,
+  content jsonb not null,
+  last_updated bigint
+);
+
+create table if not exists transactions (
+  id uuid primary key,
+  user_id uuid references auth.users not null,
+  content jsonb not null
+);
+
+alter table stock_items enable row level security;
+alter table transactions enable row level security;
+
+create policy "Users can all own items" on stock_items for all using (auth.uid() = user_id);
+create policy "Users can all own txns" on transactions for all using (auth.uid() = user_id);
+
+insert into storage.buckets (id, name, public) values ('products', 'products', true) on conflict (id) do nothing;
+create policy "Public Access" on storage.objects for select using ( bucket_id = 'products' );
+create policy "Auth Upload" on storage.objects for insert with check ( bucket_id = 'products' and auth.role() = 'authenticated' );
+    `.trim();
+
     return (
-        <div className="fixed inset-0 bg-black/70 z-[70] flex items-center justify-center p-4 backdrop-blur-sm">
-             <div className="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-2xl relative">
+        <div className="fixed inset-0 bg-black/70 z-[70] flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
+             <div className="bg-white w-full max-w-lg rounded-[2rem] p-6 shadow-2xl relative my-8">
                 <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-gray-100 rounded-full hover:bg-gray-200"><X size={20} /></button>
                 <div className="text-center mb-6">
                     <Database size={48} className="mx-auto text-indigo-600 mb-2"/>
                     <h2 className="text-xl font-black text-gray-800 tamil-font">{language === 'ta' ? 'கிளவுட் டேட்டாபேஸ் செட்டிங்ஸ்' : 'Setup Cloud Database'}</h2>
                 </div>
-                <form onSubmit={handleSaveConfig} className="space-y-4">
-                    <input value={setupUrl} onChange={e => setSetupUrl(e.target.value)} className="w-full bg-gray-100 p-3 rounded-xl font-mono text-sm border outline-none" placeholder="Supabase URL" required />
-                    <input value={setupKey} onChange={e => setSetupKey(e.target.value)} className="w-full bg-gray-100 p-3 rounded-xl font-mono text-sm border outline-none" placeholder="Anon Key" required />
-                    <button type="submit" className="w-full bg-indigo-600 text-white p-3 rounded-xl font-bold shadow-lg">Save & Connect</button>
-                </form>
+                
+                {!showSql ? (
+                    <form onSubmit={handleSaveConfig} className="space-y-4">
+                        <div className="bg-blue-50 p-4 rounded-xl text-blue-800 text-sm mb-4">
+                            <p className="font-bold mb-1">How to setup:</p>
+                            <ol className="list-decimal list-inside space-y-1">
+                                <li>Create a project at <a href="https://supabase.com" target="_blank" rel="noreferrer" className="underline">supabase.com</a></li>
+                                <li>Get URL & Anon Key from Project Settings -&gt; API</li>
+                                <li>Run the Setup SQL in SQL Editor</li>
+                            </ol>
+                        </div>
+
+                        <input value={setupUrl} onChange={e => setSetupUrl(e.target.value)} className="w-full bg-gray-100 p-3 rounded-xl font-mono text-sm border outline-none" placeholder="Supabase URL (https://...)" required />
+                        <input value={setupKey} onChange={e => setSetupKey(e.target.value)} className="w-full bg-gray-100 p-3 rounded-xl font-mono text-sm border outline-none" placeholder="Anon Key" required />
+                        
+                        <button type="button" onClick={() => setShowSql(true)} className="w-full py-3 text-indigo-600 font-bold text-sm hover:bg-indigo-50 rounded-xl transition">
+                            Show Setup SQL Commands
+                        </button>
+
+                        <button type="submit" className="w-full bg-indigo-600 text-white p-3 rounded-xl font-bold shadow-lg">Save & Connect</button>
+                    </form>
+                ) : (
+                    <div className="space-y-4">
+                        <div className="bg-gray-900 text-gray-100 p-4 rounded-xl font-mono text-xs overflow-x-auto h-64 whitespace-pre">
+                            {sqlCommands}
+                        </div>
+                        <button onClick={() => { navigator.clipboard.writeText(sqlCommands); alert('Copied to clipboard!'); }} className="w-full bg-gray-100 text-gray-800 p-3 rounded-xl font-bold hover:bg-gray-200">
+                            Copy SQL
+                        </button>
+                        <button onClick={() => setShowSql(false)} className="w-full text-gray-500 p-3 font-bold text-sm">
+                            Back
+                        </button>
+                    </div>
+                )}
              </div>
         </div>
     );
@@ -437,12 +497,15 @@ const App: React.FC = () => {
         }
     } catch (e) { console.error("Local load failed", e); }
 
-    if (user.uid && isOnline && isSupabaseConfigured) {
+    if (user.uid && user.uid !== 'guest' && isOnline && isSupabaseConfigured) {
       if (isManualRefresh) setIsSyncing(true);
       try {
         // Force Fetch Stocks
         const { data: sData, error: sError } = await supabase.from('stock_items').select('*').eq('user_id', user.uid).order('last_updated', { ascending: false });
-        if (sError) console.error("Fetch stocks error:", sError);
+        if (sError) {
+             console.error("Fetch stocks error:", sError);
+             setToast({ msg: 'Sync Error: Check Database Setup', show: true, isError: true });
+        }
         if (sData) {
           const freshS = sData.map((r: any) => {
               try { 
@@ -520,7 +583,7 @@ const App: React.FC = () => {
 
         const newItem = { ...itemData, variants: processedVariants, id: id || generateUUID(), lastUpdated: Date.now() };
         
-        if (user.uid && isOnline && isSupabaseConfigured) {
+        if (user.uid && user.uid !== 'guest' && isOnline && isSupabaseConfigured) {
           // Use .select() to ensure confirmed save
           const { data, error } = await supabase.from('stock_items')
             .upsert({ id: newItem.id, user_id: user.uid, content: newItem, last_updated: newItem.lastUpdated })
@@ -580,7 +643,7 @@ const App: React.FC = () => {
     try {
         const newTxn = { ...txnData, id: id || generateUUID(), date: date || Date.now() };
         
-        if (user.uid && isOnline && isSupabaseConfigured) {
+        if (user.uid && user.uid !== 'guest' && isOnline && isSupabaseConfigured) {
           const { data, error } = await supabase.from('transactions')
             .upsert({ id: newTxn.id, user_id: user.uid, content: newTxn })
             .select();
@@ -778,7 +841,7 @@ const AuthScreen: React.FC<{ onLogin: (u: User) => void; language: 'ta' | 'en'; 
                 )}
 
                 <div className="mt-6 text-center border-t pt-4">
-                    <button onClick={() => onLogin({ email: 'guest@viyabaari.local', name: 'Guest', isLoggedIn: true })} className="text-indigo-600 font-bold text-sm hover:underline w-full">Guest Mode (Offline)</button>
+                    <button onClick={() => onLogin({ uid: 'guest', email: 'guest@viyabaari.local', name: 'Guest', isLoggedIn: true })} className="text-indigo-600 font-bold text-sm hover:underline w-full">Guest Mode (Offline)</button>
                 </div>
          </div>
       </div>
