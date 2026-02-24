@@ -51,6 +51,11 @@ const generateUUID = () => {
     });
 };
 
+const isValidUUID = (uuid: string) => {
+    const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return regex.test(uuid);
+};
+
 const DatabaseConfigModal: React.FC<{ onClose: () => void; language: 'ta' | 'en' }> = ({ onClose, language }) => {
     const [setupUrl, setSetupUrl] = useState(localStorage.getItem('viyabaari_supabase_url') || '');
     const [setupKey, setSetupKey] = useState(localStorage.getItem('viyabaari_supabase_key') || '');
@@ -497,14 +502,14 @@ const App: React.FC = () => {
         }
     } catch (e) { console.error("Local load failed", e); }
 
-    if (user.uid && user.uid !== 'guest' && isOnline && isSupabaseConfigured) {
+    if (user.uid && isValidUUID(user.uid) && isOnline && isSupabaseConfigured) {
       if (isManualRefresh) setIsSyncing(true);
       try {
         // Force Fetch Stocks
         const { data: sData, error: sError } = await supabase.from('stock_items').select('*').eq('user_id', user.uid).order('last_updated', { ascending: false });
         if (sError) {
              console.error("Fetch stocks error:", sError);
-             setToast({ msg: 'Sync Error: Check Database Setup', show: true, isError: true });
+             setToast({ msg: `Sync Error: ${sError.message || 'Check Database Setup'}`, show: true, isError: true });
         }
         if (sData) {
           const freshS = sData.map((r: any) => {
@@ -519,7 +524,10 @@ const App: React.FC = () => {
 
         // Force Fetch Transactions
         const { data: tData, error: tError } = await supabase.from('transactions').select('*').eq('user_id', user.uid);
-        if (tError) console.error("Fetch txns error:", tError);
+        if (tError) {
+             console.error("Fetch txns error:", tError);
+             setToast({ msg: `Sync Error: ${tError.message || 'Check Database Setup'}`, show: true, isError: true });
+        }
         if (tData) {
           const freshT = tData.map((r: any) => {
               try { 
@@ -583,7 +591,7 @@ const App: React.FC = () => {
 
         const newItem = { ...itemData, variants: processedVariants, id: id || generateUUID(), lastUpdated: Date.now() };
         
-        if (user.uid && user.uid !== 'guest' && isOnline && isSupabaseConfigured) {
+        if (user.uid && isValidUUID(user.uid) && isOnline && isSupabaseConfigured) {
           // Use .select() to ensure confirmed save
           const { data, error } = await supabase.from('stock_items')
             .upsert({ id: newItem.id, user_id: user.uid, content: newItem, last_updated: newItem.lastUpdated })
@@ -643,7 +651,7 @@ const App: React.FC = () => {
     try {
         const newTxn = { ...txnData, id: id || generateUUID(), date: date || Date.now() };
         
-        if (user.uid && user.uid !== 'guest' && isOnline && isSupabaseConfigured) {
+        if (user.uid && isValidUUID(user.uid) && isOnline && isSupabaseConfigured) {
           const { data, error } = await supabase.from('transactions')
             .upsert({ id: newTxn.id, user_id: user.uid, content: newTxn })
             .select();

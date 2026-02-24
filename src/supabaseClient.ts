@@ -60,11 +60,16 @@ export const saveSupabaseConfig = (url: string, key: string) => {
 
     localStorage.setItem('viyabaari_supabase_url', cleanUrl);
     localStorage.setItem('viyabaari_supabase_key', key.trim());
+    
+    // Clear active user so they are forced to login to the new project
+    localStorage.removeItem('viyabaari_active_user');
+    
     window.location.reload();
 };
 
 export const resetSupabaseConfig = () => {
     localStorage.removeItem('viyabaari_supabase_url');
     localStorage.removeItem('viyabaari_supabase_key');
+    localStorage.removeItem('viyabaari_active_user');
     window.location.reload();
 };
