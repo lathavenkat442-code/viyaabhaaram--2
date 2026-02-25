@@ -67,14 +67,8 @@ const Profile: React.FC<ProfileProps> = ({ user, updateUser, stocks, transaction
           if (uploadedUrl) {
               finalAvatarUrl = uploadedUrl;
           } else {
-              console.warn("Avatar upload failed");
-              // Avoid saving Base64 to DB
-              if (finalAvatarUrl.startsWith('data:image')) {
-                  finalAvatarUrl = user.avatar || '';
-              }
+              console.warn("Avatar upload failed, keeping base64");
           }
-      } else if (finalAvatarUrl && finalAvatarUrl.startsWith('data:image')) {
-          finalAvatarUrl = user.avatar || '';
       }
 
       if (isSupabaseConfigured) {
