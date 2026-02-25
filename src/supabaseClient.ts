@@ -11,9 +11,16 @@ const env = (import.meta as any).env || {};
 const envUrl = env.VITE_SUPABASE_URL ? env.VITE_SUPABASE_URL.trim() : '';
 const envKey = env.VITE_SUPABASE_ANON_KEY ? env.VITE_SUPABASE_ANON_KEY.trim() : '';
 
-// Fallback: Check LocalStorage (allows users to input keys in UI if .env is missing)
-const localUrl = localStorage.getItem('viyabaari_supabase_url')?.trim();
-const localKey = localStorage.getItem('viyabaari_supabase_key')?.trim();
+const getLocalItem = (key: string) => {
+  try {
+    return localStorage.getItem(key);
+  } catch (e) {
+    return null;
+  }
+};
+
+const localUrl = getLocalItem('viyabaari_supabase_url')?.trim();
+const localKey = getLocalItem('viyabaari_supabase_key')?.trim();
 
 let rawUrl = envUrl || localUrl;
 const rawKey = envKey || localKey;
@@ -48,6 +55,9 @@ const safeKey = isConfigValid ? rawKey : 'placeholder';
 
 export const supabase = createClient(safeUrl, safeKey);
 
+const setLocalItem = (key: string, value: string) => { try { localStorage.setItem(key, value); } catch (e) {} };
+const removeLocalItem = (key: string) => { try { localStorage.removeItem(key); } catch (e) {} };
+
 // Helper to save config from UI with sanitization
 export const saveSupabaseConfig = (url: string, key: string) => {
     if (!url || !key) return;
@@ -58,18 +68,18 @@ export const saveSupabaseConfig = (url: string, key: string) => {
         cleanUrl = `https://${cleanUrl}`;
     }
 
-    localStorage.setItem('viyabaari_supabase_url', cleanUrl);
-    localStorage.setItem('viyabaari_supabase_key', key.trim());
+    setLocalItem('viyabaari_supabase_url', cleanUrl);
+    setLocalItem('viyabaari_supabase_key', key.trim());
     
     // Clear active user so they are forced to login to the new project
-    localStorage.removeItem('viyabaari_active_user');
+    removeLocalItem('viyabaari_active_user');
     
     window.location.reload();
 };
 
 export const resetSupabaseConfig = () => {
-    localStorage.removeItem('viyabaari_supabase_url');
-    localStorage.removeItem('viyabaari_supabase_key');
-    localStorage.removeItem('viyabaari_active_user');
+    removeLocalItem('viyabaari_supabase_url');
+    removeLocalItem('viyabaari_supabase_key');
+    removeLocalItem('viyabaari_active_user');
     window.location.reload();
 };

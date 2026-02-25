@@ -51,14 +51,19 @@ const generateUUID = () => {
     });
 };
 
+const getLocalItem = (key: string) => { try { return localStorage.getItem(key); } catch (e) { return null; } };
+const setLocalItem = (key: string, value: string) => { try { localStorage.setItem(key, value); } catch (e) {} };
+const removeLocalItem = (key: string) => { try { localStorage.removeItem(key); } catch (e) {} };
+const clearLocal = () => { try { localStorage.clear(); } catch (e) {} };
+
 const isValidUUID = (uuid: string) => {
     const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     return regex.test(uuid);
 };
 
 const DatabaseConfigModal: React.FC<{ onClose: () => void; language: 'ta' | 'en' }> = ({ onClose, language }) => {
-    const [setupUrl, setSetupUrl] = useState(localStorage.getItem('viyabaari_supabase_url') || '');
-    const [setupKey, setSetupKey] = useState(localStorage.getItem('viyabaari_supabase_key') || '');
+    const [setupUrl, setSetupUrl] = useState(getLocalItem('viyabaari_supabase_url') || '');
+    const [setupKey, setSetupKey] = useState(getLocalItem('viyabaari_supabase_key') || '');
     const [showSql, setShowSql] = useState(false);
 
     const handleSaveConfig = (e: React.FormEvent) => {
@@ -418,7 +423,7 @@ const App: React.FC = () => {
   useEffect(() => {
     window.addEventListener('online', () => setIsOnline(true));
     window.addEventListener('offline', () => setIsOnline(false));
-    const savedLang = localStorage.getItem('viyabaari_lang');
+    const savedLang = getLocalItem('viyabaari_lang');
     if (savedLang === 'ta' || savedLang === 'en') setLanguage(savedLang);
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -431,21 +436,21 @@ const App: React.FC = () => {
           isLoggedIn: true 
         });
       } else {
-        const savedUser = localStorage.getItem('viyabaari_active_user');
+        const savedUser = getLocalItem('viyabaari_active_user');
         if (savedUser) { 
             try { 
                 const parsed = JSON.parse(savedUser);
                 if (parsed && typeof parsed === 'object') setUser(parsed);
             } catch(e) { 
                 console.error("Corrupt user data", e);
-                localStorage.removeItem('viyabaari_active_user'); 
+                removeLocalItem('viyabaari_active_user'); 
             } 
         }
       }
       setIsAppLoading(false);
     }).catch(err => {
       console.error("Session check failed", err);
-      const savedUser = localStorage.getItem('viyabaari_active_user');
+      const savedUser = getLocalItem('viyabaari_active_user');
       if (savedUser) { 
           try { 
               const parsed = JSON.parse(savedUser);
@@ -464,8 +469,8 @@ const App: React.FC = () => {
     
     // Immediate Local Load
     try {
-        const localS = localStorage.getItem(`viyabaari_stocks_${emailKey}`);
-        const localT = localStorage.getItem(`viyabaari_txns_${emailKey}`);
+        const localS = getLocalItem(`viyabaari_stocks_${emailKey}`);
+        const localT = getLocalItem(`viyabaari_txns_${emailKey}`);
         
         if (localS) {
             try {
@@ -477,7 +482,7 @@ const App: React.FC = () => {
                 }
             } catch (e) { 
                 console.error("Local stocks corrupt/old", e);
-                localStorage.removeItem(`viyabaari_stocks_${emailKey}`);
+                removeLocalItem(`viyabaari_stocks_${emailKey}`);
                 setStocks([]);
             }
         } else {
@@ -494,7 +499,7 @@ const App: React.FC = () => {
                 }
             } catch (e) { 
                 console.error("Local txns corrupt/old", e);
-                localStorage.removeItem(`viyabaari_txns_${emailKey}`);
+                removeLocalItem(`viyabaari_txns_${emailKey}`);
                 setTransactions([]);
             }
         } else {
@@ -519,7 +524,7 @@ const App: React.FC = () => {
               } catch(e) { return null; }
           }).filter(Boolean);
           setStocks(freshS);
-          try { localStorage.setItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(freshS)); } catch(e) {}
+          setLocalItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(freshS));
         }
 
         // Force Fetch Transactions
@@ -537,7 +542,7 @@ const App: React.FC = () => {
           }).filter(Boolean);
           freshT.sort((a: any, b: any) => (b.date || 0) - (a.date || 0));
           setTransactions(freshT);
-          try { localStorage.setItem(`viyabaari_txns_${emailKey}`, JSON.stringify(freshT)); } catch(e) {}
+          setLocalItem(`viyabaari_txns_${emailKey}`, JSON.stringify(freshT));
         }
       } catch (e) { console.error("Cloud fetch failed", e); }
       finally { if (isManualRefresh) setIsSyncing(false); }
@@ -610,7 +615,7 @@ const App: React.FC = () => {
                  // Update State ONLY after successful DB save
                  setStocks(prev => {
                     const updated = id ? prev.map(s => s.id === confirmedItem.id ? confirmedItem : s) : [confirmedItem, ...prev];
-                    try { localStorage.setItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
+                    setLocalItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated));
                     return updated;
                  });
               }
@@ -619,7 +624,7 @@ const App: React.FC = () => {
               // Fallback to newItem if parsing fails but save was successful
               setStocks(prev => {
                 const updated = id ? prev.map(s => s.id === newItem.id ? newItem : s) : [newItem, ...prev];
-                try { localStorage.setItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
+                setLocalItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated));
                 return updated;
              });
             }
@@ -628,7 +633,7 @@ const App: React.FC = () => {
             // Offline Mode: Just update local state
             setStocks(prev => {
                 const updated = id ? prev.map(s => s.id === newItem.id ? newItem : s) : [newItem, ...prev];
-                try { localStorage.setItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
+                setLocalItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated));
                 return updated;
             });
         }
@@ -664,7 +669,7 @@ const App: React.FC = () => {
                if (confirmedTxn && confirmedTxn.id) {
                  setTransactions(prev => {
                     const updated = id ? prev.map(t => t.id === confirmedTxn.id ? confirmedTxn : t) : [confirmedTxn, ...prev];
-                    try { localStorage.setItem(`viyabaari_txns_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
+                    setLocalItem(`viyabaari_txns_${emailKey}`, JSON.stringify(updated));
                     return updated;
                  });
                }
@@ -673,7 +678,7 @@ const App: React.FC = () => {
                // Fallback
                setTransactions(prev => {
                   const updated = id ? prev.map(t => t.id === newTxn.id ? newTxn : t) : [newTxn, ...prev];
-                  try { localStorage.setItem(`viyabaari_txns_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
+                  setLocalItem(`viyabaari_txns_${emailKey}`, JSON.stringify(updated));
                   return updated;
                });
              }
@@ -682,7 +687,7 @@ const App: React.FC = () => {
             // Offline Mode
             setTransactions(prev => {
               const updated = id ? prev.map(t => t.id === id ? newTxn : t) : [newTxn, ...prev];
-              try { localStorage.setItem(`viyabaari_txns_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
+              setLocalItem(`viyabaari_txns_${emailKey}`, JSON.stringify(updated));
               return updated;
             });
         }
@@ -715,7 +720,7 @@ const App: React.FC = () => {
     try {
         setStocks(prev => {
             const updated = prev.filter(s => s.id !== id);
-            try { localStorage.setItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated)); } catch(e) {}
+            setLocalItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated));
             return updated;
         });
 
@@ -737,7 +742,7 @@ const App: React.FC = () => {
     if (!user) return;
     const emailKey = getEmailKey(user.email);
     setTransactions([]);
-    try { localStorage.setItem(`viyabaari_txns_${emailKey}`, '[]'); } catch(e) {}
+    setLocalItem(`viyabaari_txns_${emailKey}`, '[]');
     if (user.uid && isOnline && isSupabaseConfigured) {
        await supabase.from('transactions').delete().eq('user_id', user.uid);
     }
@@ -755,7 +760,7 @@ const App: React.FC = () => {
       );
   }
 
-  if (!user) return <AuthScreen onLogin={u => { setUser(u); localStorage.setItem('viyabaari_active_user', JSON.stringify(u)); window.location.reload(); }} language={language} t={t} isOnline={isOnline} />;
+  if (!user) return <AuthScreen onLogin={u => { setUser(u); setLocalItem('viyabaari_active_user', JSON.stringify(u)); window.location.reload(); }} language={language} t={t} isOnline={isOnline} />;
 
   return (
     <div className="max-w-md mx-auto min-h-screen bg-slate-50 flex flex-col shadow-xl">
@@ -774,10 +779,10 @@ const App: React.FC = () => {
         {activeTab === 'accounts' && <Accounting transactions={transactions} language={language} onEdit={t => { setEditingTransaction(t); setIsAddingTransaction(true); }} onClear={handleClearTransactions} />}
         {activeTab === 'profile' && <Profile user={user} updateUser={setUser} stocks={stocks} transactions={transactions} onLogout={async () => { 
             await supabase.auth.signOut(); 
-            localStorage.clear();
+            clearLocal();
             sessionStorage.clear();
             setUser(null); 
-        }} onRestore={d => {}} language={language} onLanguageChange={(l) => { setLanguage(l); localStorage.setItem('viyabaari_lang', l); }} onClearTransactions={handleClearTransactions} onResetApp={() => {}} onSetupServer={() => setShowDatabaseConfig(true)} />}
+        }} onRestore={d => {}} language={language} onLanguageChange={(l) => { setLanguage(l); setLocalItem('viyabaari_lang', l); }} onClearTransactions={handleClearTransactions} onResetApp={() => {}} onSetupServer={() => setShowDatabaseConfig(true)} />}
       </main>
       {showDatabaseConfig && <DatabaseConfigModal onClose={() => setShowDatabaseConfig(false)} language={language} />}
       {isAddingStock && <AddStockModal onSave={saveStock} onClose={() => setIsAddingStock(false)} initialData={editingStock || undefined} language={language} t={t} />}
