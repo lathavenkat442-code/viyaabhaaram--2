@@ -9,7 +9,7 @@ import Profile from './components/Profile';
 import { supabase, isSupabaseConfigured, saveSupabaseConfig } from './supabaseClient';
 import { uploadImage } from './services/storage';
 import { 
-  LayoutDashboard, Package, ArrowLeftRight, User as UserIcon, CirclePlus, X, Camera, Trash2, Palette, ChevronDown, RefreshCw, Database, Loader2, WifiOff, CircleCheck, TriangleAlert, Pencil
+  LayoutDashboard, Package, ArrowLeftRight, User as UserIcon, PlusCircle, X, Camera, Trash2, Palette, ChevronDown, RefreshCw, Database, Loader2, WifiOff, CheckCircle2, AlertTriangle
 } from 'lucide-react';
 
 const EXPENSE_CATEGORIES = ['Salary', 'Rent', 'Tea/Snacks', 'Transport', 'Purchase', 'Sales', 'Electricity', 'Maintenance', 'Others'];
@@ -25,7 +25,7 @@ const Toast: React.FC<{ message: string; show: boolean; onClose: () => void; isE
     return (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-top duration-500">
             <div className={`px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 border backdrop-blur-md ${isError ? 'bg-red-600 border-red-500 text-white' : 'bg-green-600 border-green-500 text-white'}`}>
-                {isError ? <TriangleAlert size={20} /> : <CircleCheck size={20} />}
+                {isError ? <AlertTriangle size={20} /> : <CheckCircle2 size={20} />}
                 <span className="font-bold text-sm tamil-font whitespace-nowrap">{message}</span>
             </div>
         </div>
@@ -51,96 +51,26 @@ const generateUUID = () => {
     });
 };
 
-const getLocalItem = (key: string) => { try { return localStorage.getItem(key); } catch (e) { return null; } };
-const setLocalItem = (key: string, value: string) => { try { localStorage.setItem(key, value); } catch (e) {} };
-const removeLocalItem = (key: string) => { try { localStorage.removeItem(key); } catch (e) {} };
-const clearLocal = () => { try { localStorage.clear(); } catch (e) {} };
-
-const isValidUUID = (uuid: string) => {
-    const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    return regex.test(uuid);
-};
-
 const DatabaseConfigModal: React.FC<{ onClose: () => void; language: 'ta' | 'en' }> = ({ onClose, language }) => {
-    const [setupUrl, setSetupUrl] = useState(getLocalItem('viyabaari_supabase_url') || '');
-    const [setupKey, setSetupKey] = useState(getLocalItem('viyabaari_supabase_key') || '');
-    const [showSql, setShowSql] = useState(false);
-
+    const [setupUrl, setSetupUrl] = useState(localStorage.getItem('viyabaari_supabase_url') || '');
+    const [setupKey, setSetupKey] = useState(localStorage.getItem('viyabaari_supabase_key') || '');
     const handleSaveConfig = (e: React.FormEvent) => {
         e.preventDefault();
-        saveSupabaseConfig(setupUrl.replace(/\s+/g, ''), setupKey.replace(/\s+/g, ''));
+        saveSupabaseConfig(setupUrl.replace(/\/$/, '').trim(), setupKey.trim());
     };
-
-    const sqlCommands = `
--- Run this in Supabase SQL Editor
-create extension if not exists "uuid-ossp";
-
-create table if not exists stock_items (
-  id uuid primary key,
-  user_id uuid references auth.users not null,
-  content jsonb not null,
-  last_updated bigint
-);
-
-create table if not exists transactions (
-  id uuid primary key,
-  user_id uuid references auth.users not null,
-  content jsonb not null
-);
-
-alter table stock_items enable row level security;
-alter table transactions enable row level security;
-
-create policy "Users can all own items" on stock_items for all using (auth.uid() = user_id);
-create policy "Users can all own txns" on transactions for all using (auth.uid() = user_id);
-
-insert into storage.buckets (id, name, public) values ('products', 'products', true) on conflict (id) do nothing;
-create policy "Public Access" on storage.objects for select using ( bucket_id = 'products' );
-create policy "Auth Upload" on storage.objects for insert with check ( bucket_id = 'products' and auth.role() = 'authenticated' );
-    `.trim();
-
     return (
-        <div className="fixed inset-0 bg-black/70 z-[70] flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
-             <div className="bg-white w-full max-w-lg rounded-[2rem] p-6 shadow-2xl relative my-8">
+        <div className="fixed inset-0 bg-black/70 z-[70] flex items-center justify-center p-4 backdrop-blur-sm">
+             <div className="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-2xl relative">
                 <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-gray-100 rounded-full hover:bg-gray-200"><X size={20} /></button>
                 <div className="text-center mb-6">
                     <Database size={48} className="mx-auto text-indigo-600 mb-2"/>
                     <h2 className="text-xl font-black text-gray-800 tamil-font">{language === 'ta' ? 'கிளவுட் டேட்டாபேஸ் செட்டிங்ஸ்' : 'Setup Cloud Database'}</h2>
                 </div>
-                
-                {!showSql ? (
-                    <form onSubmit={handleSaveConfig} className="space-y-4">
-                        <div className="bg-blue-50 p-4 rounded-xl text-blue-800 text-sm mb-4">
-                            <p className="font-bold mb-1">How to setup:</p>
-                            <ol className="list-decimal list-inside space-y-1">
-                                <li>Create a project at <a href="https://supabase.com" target="_blank" rel="noreferrer" className="underline">supabase.com</a></li>
-                                <li>Get URL & Anon Key from Project Settings -&gt; API</li>
-                                <li>Run the Setup SQL in SQL Editor</li>
-                            </ol>
-                        </div>
-
-                        <input value={setupUrl} onChange={e => setSetupUrl(e.target.value)} className="w-full bg-gray-100 p-3 rounded-xl font-mono text-sm border outline-none" placeholder="Supabase URL (https://...)" required />
-                        <input value={setupKey} onChange={e => setSetupKey(e.target.value)} className="w-full bg-gray-100 p-3 rounded-xl font-mono text-sm border outline-none" placeholder="Anon Key" required />
-                        
-                        <button type="button" onClick={() => setShowSql(true)} className="w-full py-3 text-indigo-600 font-bold text-sm hover:bg-indigo-50 rounded-xl transition">
-                            Show Setup SQL Commands
-                        </button>
-
-                        <button type="submit" className="w-full bg-indigo-600 text-white p-3 rounded-xl font-bold shadow-lg">Save & Connect</button>
-                    </form>
-                ) : (
-                    <div className="space-y-4">
-                        <div className="bg-gray-900 text-gray-100 p-4 rounded-xl font-mono text-xs overflow-x-auto h-64 whitespace-pre">
-                            {sqlCommands}
-                        </div>
-                        <button onClick={() => { navigator.clipboard.writeText(sqlCommands); alert('Copied to clipboard!'); }} className="w-full bg-gray-100 text-gray-800 p-3 rounded-xl font-bold hover:bg-gray-200">
-                            Copy SQL
-                        </button>
-                        <button onClick={() => setShowSql(false)} className="w-full text-gray-500 p-3 font-bold text-sm">
-                            Back
-                        </button>
-                    </div>
-                )}
+                <form onSubmit={handleSaveConfig} className="space-y-4">
+                    <input value={setupUrl} onChange={e => setSetupUrl(e.target.value)} className="w-full bg-gray-100 p-3 rounded-xl font-mono text-sm border outline-none" placeholder="Supabase URL" required />
+                    <input value={setupKey} onChange={e => setSetupKey(e.target.value)} className="w-full bg-gray-100 p-3 rounded-xl font-mono text-sm border outline-none" placeholder="Anon Key" required />
+                    <button type="submit" className="w-full bg-indigo-600 text-white p-3 rounded-xl font-bold shadow-lg">Save & Connect</button>
+                </form>
              </div>
         </div>
     );
@@ -423,7 +353,7 @@ const App: React.FC = () => {
   useEffect(() => {
     window.addEventListener('online', () => setIsOnline(true));
     window.addEventListener('offline', () => setIsOnline(false));
-    const savedLang = getLocalItem('viyabaari_lang');
+    const savedLang = localStorage.getItem('viyabaari_lang');
     if (savedLang === 'ta' || savedLang === 'en') setLanguage(savedLang);
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -436,21 +366,21 @@ const App: React.FC = () => {
           isLoggedIn: true 
         });
       } else {
-        const savedUser = getLocalItem('viyabaari_active_user');
+        const savedUser = localStorage.getItem('viyabaari_active_user');
         if (savedUser) { 
             try { 
                 const parsed = JSON.parse(savedUser);
                 if (parsed && typeof parsed === 'object') setUser(parsed);
             } catch(e) { 
                 console.error("Corrupt user data", e);
-                removeLocalItem('viyabaari_active_user'); 
+                localStorage.removeItem('viyabaari_active_user'); 
             } 
         }
       }
       setIsAppLoading(false);
     }).catch(err => {
       console.error("Session check failed", err);
-      const savedUser = getLocalItem('viyabaari_active_user');
+      const savedUser = localStorage.getItem('viyabaari_active_user');
       if (savedUser) { 
           try { 
               const parsed = JSON.parse(savedUser);
@@ -469,8 +399,8 @@ const App: React.FC = () => {
     
     // Immediate Local Load
     try {
-        const localS = getLocalItem(`viyabaari_stocks_${emailKey}`);
-        const localT = getLocalItem(`viyabaari_txns_${emailKey}`);
+        const localS = localStorage.getItem(`viyabaari_stocks_${emailKey}`);
+        const localT = localStorage.getItem(`viyabaari_txns_${emailKey}`);
         
         if (localS) {
             try {
@@ -482,7 +412,7 @@ const App: React.FC = () => {
                 }
             } catch (e) { 
                 console.error("Local stocks corrupt/old", e);
-                removeLocalItem(`viyabaari_stocks_${emailKey}`);
+                localStorage.removeItem(`viyabaari_stocks_${emailKey}`);
                 setStocks([]);
             }
         } else {
@@ -499,7 +429,7 @@ const App: React.FC = () => {
                 }
             } catch (e) { 
                 console.error("Local txns corrupt/old", e);
-                removeLocalItem(`viyabaari_txns_${emailKey}`);
+                localStorage.removeItem(`viyabaari_txns_${emailKey}`);
                 setTransactions([]);
             }
         } else {
@@ -507,15 +437,12 @@ const App: React.FC = () => {
         }
     } catch (e) { console.error("Local load failed", e); }
 
-    if (user.uid && isValidUUID(user.uid) && isOnline && isSupabaseConfigured) {
+    if (user.uid && isOnline && isSupabaseConfigured) {
       if (isManualRefresh) setIsSyncing(true);
       try {
         // Force Fetch Stocks
         const { data: sData, error: sError } = await supabase.from('stock_items').select('*').eq('user_id', user.uid).order('last_updated', { ascending: false });
-        if (sError) {
-             console.error("Fetch stocks error:", sError);
-             setToast({ msg: `Sync Error: ${sError.message || 'Check Database Setup'}`, show: true, isError: true });
-        }
+        if (sError) console.error("Fetch stocks error:", sError);
         if (sData) {
           const freshS = sData.map((r: any) => {
               try { 
@@ -524,15 +451,12 @@ const App: React.FC = () => {
               } catch(e) { return null; }
           }).filter(Boolean);
           setStocks(freshS);
-          setLocalItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(freshS));
+          try { localStorage.setItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(freshS)); } catch(e) {}
         }
 
         // Force Fetch Transactions
         const { data: tData, error: tError } = await supabase.from('transactions').select('*').eq('user_id', user.uid);
-        if (tError) {
-             console.error("Fetch txns error:", tError);
-             setToast({ msg: `Sync Error: ${tError.message || 'Check Database Setup'}`, show: true, isError: true });
-        }
+        if (tError) console.error("Fetch txns error:", tError);
         if (tData) {
           const freshT = tData.map((r: any) => {
               try { 
@@ -542,7 +466,7 @@ const App: React.FC = () => {
           }).filter(Boolean);
           freshT.sort((a: any, b: any) => (b.date || 0) - (a.date || 0));
           setTransactions(freshT);
-          setLocalItem(`viyabaari_txns_${emailKey}`, JSON.stringify(freshT));
+          try { localStorage.setItem(`viyabaari_txns_${emailKey}`, JSON.stringify(freshT)); } catch(e) {}
         }
       } catch (e) { console.error("Cloud fetch failed", e); }
       finally { if (isManualRefresh) setIsSyncing(false); }
@@ -596,7 +520,7 @@ const App: React.FC = () => {
 
         const newItem = { ...itemData, variants: processedVariants, id: id || generateUUID(), lastUpdated: Date.now() };
         
-        if (user.uid && isValidUUID(user.uid) && isOnline && isSupabaseConfigured) {
+        if (user.uid && isOnline && isSupabaseConfigured) {
           // Use .select() to ensure confirmed save
           const { data, error } = await supabase.from('stock_items')
             .upsert({ id: newItem.id, user_id: user.uid, content: newItem, last_updated: newItem.lastUpdated })
@@ -615,7 +539,7 @@ const App: React.FC = () => {
                  // Update State ONLY after successful DB save
                  setStocks(prev => {
                     const updated = id ? prev.map(s => s.id === confirmedItem.id ? confirmedItem : s) : [confirmedItem, ...prev];
-                    setLocalItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated));
+                    try { localStorage.setItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
                     return updated;
                  });
               }
@@ -624,7 +548,7 @@ const App: React.FC = () => {
               // Fallback to newItem if parsing fails but save was successful
               setStocks(prev => {
                 const updated = id ? prev.map(s => s.id === newItem.id ? newItem : s) : [newItem, ...prev];
-                setLocalItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated));
+                try { localStorage.setItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
                 return updated;
              });
             }
@@ -633,7 +557,7 @@ const App: React.FC = () => {
             // Offline Mode: Just update local state
             setStocks(prev => {
                 const updated = id ? prev.map(s => s.id === newItem.id ? newItem : s) : [newItem, ...prev];
-                setLocalItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated));
+                try { localStorage.setItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
                 return updated;
             });
         }
@@ -656,7 +580,7 @@ const App: React.FC = () => {
     try {
         const newTxn = { ...txnData, id: id || generateUUID(), date: date || Date.now() };
         
-        if (user.uid && isValidUUID(user.uid) && isOnline && isSupabaseConfigured) {
+        if (user.uid && isOnline && isSupabaseConfigured) {
           const { data, error } = await supabase.from('transactions')
             .upsert({ id: newTxn.id, user_id: user.uid, content: newTxn })
             .select();
@@ -669,7 +593,7 @@ const App: React.FC = () => {
                if (confirmedTxn && confirmedTxn.id) {
                  setTransactions(prev => {
                     const updated = id ? prev.map(t => t.id === confirmedTxn.id ? confirmedTxn : t) : [confirmedTxn, ...prev];
-                    setLocalItem(`viyabaari_txns_${emailKey}`, JSON.stringify(updated));
+                    try { localStorage.setItem(`viyabaari_txns_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
                     return updated;
                  });
                }
@@ -678,7 +602,7 @@ const App: React.FC = () => {
                // Fallback
                setTransactions(prev => {
                   const updated = id ? prev.map(t => t.id === newTxn.id ? newTxn : t) : [newTxn, ...prev];
-                  setLocalItem(`viyabaari_txns_${emailKey}`, JSON.stringify(updated));
+                  try { localStorage.setItem(`viyabaari_txns_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
                   return updated;
                });
              }
@@ -687,7 +611,7 @@ const App: React.FC = () => {
             // Offline Mode
             setTransactions(prev => {
               const updated = id ? prev.map(t => t.id === id ? newTxn : t) : [newTxn, ...prev];
-              setLocalItem(`viyabaari_txns_${emailKey}`, JSON.stringify(updated));
+              try { localStorage.setItem(`viyabaari_txns_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
               return updated;
             });
         }
@@ -720,7 +644,7 @@ const App: React.FC = () => {
     try {
         setStocks(prev => {
             const updated = prev.filter(s => s.id !== id);
-            setLocalItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated));
+            try { localStorage.setItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated)); } catch(e) {}
             return updated;
         });
 
@@ -742,7 +666,7 @@ const App: React.FC = () => {
     if (!user) return;
     const emailKey = getEmailKey(user.email);
     setTransactions([]);
-    setLocalItem(`viyabaari_txns_${emailKey}`, '[]');
+    try { localStorage.setItem(`viyabaari_txns_${emailKey}`, '[]'); } catch(e) {}
     if (user.uid && isOnline && isSupabaseConfigured) {
        await supabase.from('transactions').delete().eq('user_id', user.uid);
     }
@@ -760,7 +684,7 @@ const App: React.FC = () => {
       );
   }
 
-  if (!user) return <AuthScreen onLogin={u => { setUser(u); setLocalItem('viyabaari_active_user', JSON.stringify(u)); window.location.reload(); }} language={language} t={t} isOnline={isOnline} />;
+  if (!user) return <AuthScreen onLogin={u => { setUser(u); localStorage.setItem('viyabaari_active_user', JSON.stringify(u)); window.location.reload(); }} language={language} t={t} isOnline={isOnline} />;
 
   return (
     <div className="max-w-md mx-auto min-h-screen bg-slate-50 flex flex-col shadow-xl">
@@ -769,7 +693,7 @@ const App: React.FC = () => {
         <div className="flex items-center gap-2"><h1 className="text-lg sm:text-xl font-bold tamil-font truncate">{t.appName}</h1></div>
         <div className="flex gap-2 items-center">
             {isOnline && user.uid && <button onClick={() => fetchData(true)} className={`p-2 bg-white/10 hover:bg-white/20 rounded-full transition ${isSyncing ? 'animate-spin' : ''}`}><RefreshCw size={20} /></button>}
-            <button onClick={() => { setEditingStock(null); setIsAddingStock(true); }} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition"><CirclePlus size={20}/></button>
+            <button onClick={() => { setEditingStock(null); setIsAddingStock(true); }} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition"><PlusCircle size={20}/></button>
             <button onClick={() => { setEditingTransaction(null); setIsAddingTransaction(true); }} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition"><ArrowLeftRight size={20}/></button>
         </div>
       </header>
@@ -779,10 +703,10 @@ const App: React.FC = () => {
         {activeTab === 'accounts' && <Accounting transactions={transactions} language={language} onEdit={t => { setEditingTransaction(t); setIsAddingTransaction(true); }} onClear={handleClearTransactions} />}
         {activeTab === 'profile' && <Profile user={user} updateUser={setUser} stocks={stocks} transactions={transactions} onLogout={async () => { 
             await supabase.auth.signOut(); 
-            clearLocal();
+            localStorage.clear();
             sessionStorage.clear();
             setUser(null); 
-        }} onRestore={d => {}} language={language} onLanguageChange={(l) => { setLanguage(l); setLocalItem('viyabaari_lang', l); }} onClearTransactions={handleClearTransactions} onResetApp={() => {}} onSetupServer={() => setShowDatabaseConfig(true)} />}
+        }} onRestore={d => {}} language={language} onLanguageChange={(l) => { setLanguage(l); localStorage.setItem('viyabaari_lang', l); }} onClearTransactions={handleClearTransactions} onResetApp={() => {}} onSetupServer={() => setShowDatabaseConfig(true)} />}
       </main>
       {showDatabaseConfig && <DatabaseConfigModal onClose={() => setShowDatabaseConfig(false)} language={language} />}
       {isAddingStock && <AddStockModal onSave={saveStock} onClose={() => setIsAddingStock(false)} initialData={editingStock || undefined} language={language} t={t} />}
@@ -854,7 +778,7 @@ const AuthScreen: React.FC<{ onLogin: (u: User) => void; language: 'ta' | 'en'; 
                 )}
 
                 <div className="mt-6 text-center border-t pt-4">
-                    <button onClick={() => onLogin({ uid: 'guest', email: 'guest@viyabaari.local', name: 'Guest', isLoggedIn: true })} className="text-indigo-600 font-bold text-sm hover:underline w-full">Guest Mode (Offline)</button>
+                    <button onClick={() => onLogin({ email: 'guest@viyabaari.local', name: 'Guest', isLoggedIn: true })} className="text-indigo-600 font-bold text-sm hover:underline w-full">Guest Mode (Offline)</button>
                 </div>
          </div>
       </div>
