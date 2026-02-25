@@ -486,27 +486,29 @@ const App: React.FC = () => {
             
             if (finalImageUrl && finalImageUrl.startsWith('data:image')) {
                 try {
-                    const blob = base64ToBlob(finalImageUrl);
-                    
-                    const fileExt = blob.type.split('/')[1] || 'jpeg';
-                    const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-                    const filePath = fileName;
+                    if (isSupabaseConfigured) {
+                        const blob = base64ToBlob(finalImageUrl);
+                        
+                        const fileExt = blob.type.split('/')[1] || 'jpeg';
+                        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+                        const filePath = fileName;
 
-                    const { error: uploadError } = await supabase.storage
-                        .from('products')
-                        .upload(filePath, blob, { contentType: blob.type || 'image/jpeg', upsert: true });
-
-                    if (uploadError) {
-                        console.warn("Image upload failed, keeping base64 image URL");
-                        // finalImageUrl = ''; 
-                    } else {
-                        const { data: { publicUrl } } = supabase.storage
+                        const { error: uploadError } = await supabase.storage
                             .from('products')
-                            .getPublicUrl(filePath);
-                        finalImageUrl = publicUrl;
+                            .upload(filePath, blob, { contentType: blob.type || 'image/jpeg', upsert: true });
+
+                        if (uploadError) {
+                            console.warn("Image upload failed, keeping base64 image URL", uploadError);
+                            // finalImageUrl = ''; 
+                        } else {
+                            const { data: { publicUrl } } = supabase.storage
+                                .from('products')
+                                .getPublicUrl(filePath);
+                            finalImageUrl = publicUrl;
+                        }
                     }
                 } catch (e) {
-                    console.error("Image upload exception for variant", v.id, e);
+                    console.warn("Image upload exception for variant (offline?)", v.id, e);
                     // finalImageUrl = '';
                 }
             }

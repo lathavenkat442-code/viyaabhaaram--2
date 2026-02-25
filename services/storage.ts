@@ -1,6 +1,9 @@
-import { supabase } from '../supabaseClient';
+import { supabase, isSupabaseConfigured } from '../supabaseClient';
 
 export const uploadImage = async (file: File, bucket: string): Promise<string | null> => {
+  if (!isSupabaseConfigured) {
+    return null;
+  }
   try {
     // Create a unique file name
     const fileExt = file.name.split('.').pop();
@@ -12,7 +15,7 @@ export const uploadImage = async (file: File, bucket: string): Promise<string | 
       .upload(filePath, file);
 
     if (uploadError) {
-      console.error(`Error uploading image to ${bucket}:`, uploadError);
+      console.warn(`Could not upload image to ${bucket}:`, uploadError.message || uploadError);
       return null;
     }
 
@@ -21,8 +24,8 @@ export const uploadImage = async (file: File, bucket: string): Promise<string | 
       .getPublicUrl(filePath);
 
     return data.publicUrl;
-  } catch (error) {
-    console.error(`Unexpected error uploading image to ${bucket}:`, error);
+  } catch (error: any) {
+    console.warn(`Unexpected error uploading image to ${bucket}:`, error.message || error);
     return null;
   }
 };

@@ -72,17 +72,23 @@ const Profile: React.FC<ProfileProps> = ({ user, updateUser, stocks, transaction
       }
 
       if (isSupabaseConfigured) {
-        const { error } = await supabase.auth.updateUser({
-          data: { full_name: editName, avatar_url: finalAvatarUrl }
-        });
-        if (error) throw error;
+        try {
+          const { error } = await supabase.auth.updateUser({
+            data: { full_name: editName, avatar_url: finalAvatarUrl }
+          });
+          if (error) {
+            console.warn("Supabase update failed (offline?), continuing with local update:", error);
+          }
+        } catch (e) {
+          console.warn("Supabase update exception (offline?), continuing with local update:", e);
+        }
       }
       updateUser({ ...user, name: editName, avatar: finalAvatarUrl });
       setIsEditingProfile(false);
       setAvatarFile(null);
       alert(language === 'ta' ? 'சுயவிவரம் புதுப்பிக்கப்பட்டது' : 'Profile updated successfully');
     } catch (error: any) {
-      alert(error.message);
+      alert(language === 'ta' ? 'பிழை ஏற்பட்டது: ' + error.message : 'Error: ' + error.message);
     }
   };
 
