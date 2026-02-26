@@ -336,7 +336,13 @@ const App: React.FC = () => {
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        setUser({ uid: session.user.id, email: session.user.email || '', name: session.user.user_metadata.name || 'User', isLoggedIn: true });
+        setUser({ 
+          uid: session.user.id, 
+          email: session.user.email || '', 
+          name: session.user.user_metadata.full_name || session.user.user_metadata.name || 'User', 
+          avatar: session.user.user_metadata.avatar_url,
+          isLoggedIn: true 
+        });
       } else {
         const savedUser = localStorage.getItem('viyabaari_active_user');
         if (savedUser) { try { setUser(JSON.parse(savedUser)); } catch(e) { localStorage.removeItem('viyabaari_active_user'); } }
@@ -480,8 +486,15 @@ const App: React.FC = () => {
   };
 
   const handleDeleteStock = async (id: string) => {
-    const confirmMsg = language === 'ta' ? 'நிச்சயமாக இதை நீக்க வேண்டுமா?' : 'Are you sure you want to delete?';
-    if (!window.confirm(confirmMsg)) return false;
+    const confirmMsg = language === 'ta' 
+        ? 'இதை நீக்க "DELETE" என டைப் செய்யவும்:' 
+        : 'Type "DELETE" to confirm deletion:';
+    
+    const input = window.prompt(confirmMsg);
+    if (input !== 'DELETE') {
+        if (input !== null) alert(language === 'ta' ? 'தவறான குறியீடு' : 'Incorrect confirmation');
+        return false;
+    }
     
     if (!user) return false;
     setIsLoading(true);
@@ -588,7 +601,7 @@ const AuthScreen: React.FC<{ onLogin: (u: User) => void; language: 'ta' | 'en'; 
         } else if (mode === 'LOGIN') {
            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
            if (error) throw error;
-           if (data.user) onLogin({ uid: data.user.id, email: data.user.email || '', name: data.user.user_metadata.name || 'User', isLoggedIn: true });
+           if (data.user) onLogin({ uid: data.user.id, email: data.user.email || '', name: data.user.user_metadata.full_name || data.user.user_metadata.name || 'User', avatar: data.user.user_metadata.avatar_url, isLoggedIn: true });
         } else {
            const { error } = await supabase.auth.resetPasswordForEmail(email);
            if (error) throw error;
