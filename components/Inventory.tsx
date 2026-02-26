@@ -27,9 +27,9 @@ const StockDetailView: React.FC<{ item: StockItem; onClose: () => void; onEdit: 
         }
     };
 
-    const variants = item?.variants || [];
-    const totalQty = variants.reduce((acc, v) => acc + (v?.sizeStocks?.reduce((sum, s) => sum + (s?.quantity || 0), 0) || 0), 0);
-    const history = item?.history || [];
+    const variants = item.variants || [];
+    const totalQty = variants.reduce((acc, v) => acc + v.sizeStocks.reduce((sum, s) => sum + s.quantity, 0), 0);
+    const history = item.history || [];
 
     const getSleeveLabel = (sleeve: string) => {
         if (sleeve === 'Full Hand') return language === 'ta' ? 'முழுக்கை' : 'Full Hand';
@@ -46,7 +46,7 @@ const StockDetailView: React.FC<{ item: StockItem; onClose: () => void; onEdit: 
                 <button onClick={onClose} className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition">
                     <ChevronLeft size={28} className="text-gray-700" />
                 </button>
-                <h2 className="font-black text-lg text-gray-800 truncate max-w-[60%] text-center">{item?.name}</h2>
+                <h2 className="font-black text-lg text-gray-800 truncate max-w-[60%] text-center">{item.name}</h2>
                 <div className="flex gap-2">
                     <button onClick={onShare} className="p-2 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100"><Share2 size={20} /></button>
                     <button onClick={onEdit} className="p-2 rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100"><Edit2 size={20} /></button>
@@ -64,8 +64,8 @@ const StockDetailView: React.FC<{ item: StockItem; onClose: () => void; onEdit: 
                         {variants.length > 0 ? (
                             variants.map((v, idx) => (
                                 <div key={idx} className="w-full h-full flex-shrink-0 snap-center flex items-center justify-center p-4">
-                                    {v?.imageUrl ? (
-                                        <img src={v.imageUrl} alt="" className="w-full h-full object-contain drop-shadow-sm" onError={(e) => (e.currentTarget.src = '')} />
+                                    {v.imageUrl ? (
+                                        <img src={v.imageUrl} alt="" className="w-full h-full object-contain drop-shadow-sm" />
                                     ) : (
                                         <Package size={64} className="text-gray-300" />
                                     )}
@@ -253,12 +253,12 @@ const InventoryCard: React.FC<{ item: StockItem; onClick: () => void; onDelete: 
         return () => observer.disconnect();
     }, [item.variants]);
 
-    const variants = item?.variants || [];
+    const variants = item.variants || [];
     const activeVariant: StockVariant | undefined = variants[currentImageIndex] || variants[0];
     
     // Total calculation
-    const totalQty = variants.reduce((acc, v) => acc + (v?.sizeStocks?.reduce((sum, s) => sum + (s?.quantity || 0), 0) || 0), 0);
-    const isLow = variants.some(v => v?.sizeStocks?.some(ss => (ss?.quantity || 0) < 5));
+    const totalQty = variants.reduce((acc, v) => acc + v.sizeStocks.reduce((sum, s) => sum + s.quantity, 0), 0);
+    const isLow = variants.some(v => v.sizeStocks.some(ss => ss.quantity < 5));
 
     const getSleeveShort = (sleeve: string) => {
         if (sleeve === 'Full Hand') return language === 'ta' ? 'முழு' : 'Full';
@@ -274,7 +274,7 @@ const InventoryCard: React.FC<{ item: StockItem; onClick: () => void; onDelete: 
             >
                 <div className="w-20 h-20 bg-slate-50 rounded-xl flex-shrink-0 relative overflow-hidden">
                     {activeVariant?.imageUrl ? (
-                        <img src={activeVariant.imageUrl} alt={item?.name || ''} className="w-full h-full object-cover" onError={(e) => (e.currentTarget.src = '')} />
+                        <img src={activeVariant.imageUrl} alt={item.name} className="w-full h-full object-cover" />
                     ) : (
                         <div className="w-full h-full flex items-center justify-center text-gray-300"><Package size={24} /></div>
                     )}
@@ -284,10 +284,10 @@ const InventoryCard: React.FC<{ item: StockItem; onClick: () => void; onDelete: 
                 <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start mb-1">
                         <div>
-                            <h4 className="font-bold text-gray-800 text-sm truncate">{item?.name || 'Unknown'}</h4>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{item?.category || 'General'}</p>
+                            <h4 className="font-bold text-gray-800 text-sm truncate">{item.name}</h4>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{item.category}</p>
                         </div>
-                        <p className="text-sm font-black text-gray-900 bg-gray-50 px-2 py-0.5 rounded-lg">₹{item?.price || 0}</p>
+                        <p className="text-sm font-black text-gray-900 bg-gray-50 px-2 py-0.5 rounded-lg">₹{item.price}</p>
                     </div>
                     
                     <div className="flex items-center justify-between mt-2">
@@ -321,13 +321,13 @@ const InventoryCard: React.FC<{ item: StockItem; onClick: () => void; onDelete: 
                     {variants.length > 0 ? (
                         variants.map((v, idx) => (
                             <div 
-                                key={v?.id || idx} 
+                                key={v.id || idx} 
                                 data-index={idx}
                                 className="flex-shrink-0 w-full h-full snap-center flex items-center justify-center p-2 relative"
                                 onClick={onClick} // Ensure clicking image opens modal
                             >
-                                {v?.imageUrl ? (
-                                    <img src={v.imageUrl} alt={`${item?.name} ${idx}`} className="w-full h-full object-contain rounded-xl" onError={(e) => (e.currentTarget.src = '')} />
+                                {v.imageUrl ? (
+                                    <img src={v.imageUrl} alt={`${item.name} ${idx}`} className="w-full h-full object-contain rounded-xl" />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-gray-300">
                                         <Package size={32} />
@@ -363,8 +363,8 @@ const InventoryCard: React.FC<{ item: StockItem; onClick: () => void; onDelete: 
             
             <div className="p-4 flex-1 flex flex-col">
                 <div className="mb-2">
-                    <h4 className="font-black text-gray-800 text-sm leading-tight truncate">{item?.name || 'Unknown'}</h4>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{item?.category || 'General'}</p>
+                    <h4 className="font-black text-gray-800 text-sm leading-tight truncate">{item.name}</h4>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{item.category}</p>
                 </div>
 
                 {/* Size-wise stock breakdown for ACTIVE VARIANT */}
@@ -374,7 +374,7 @@ const InventoryCard: React.FC<{ item: StockItem; onClick: () => void; onDelete: 
                         <span className="bg-gray-200 text-gray-600 px-1 rounded text-[8px]">#{currentImageIndex + 1}</span>
                     </p>
                     <div className="flex flex-wrap gap-1 justify-center">
-                        {activeVariant && activeVariant.sizeStocks && activeVariant.sizeStocks.length > 0 ? (
+                        {activeVariant && activeVariant.sizeStocks.length > 0 ? (
                             activeVariant.sizeStocks.map((ss, i) => (
                                 <div key={i} className={`text-[9px] font-black px-2 py-1 rounded-lg flex gap-1 border shadow-sm ${ss.quantity < 5 ? 'bg-red-50 text-red-600 border-red-100' : 'bg-white text-slate-700 border-slate-200'}`}>
                                     {/* Show color if exists, else size */}
@@ -410,7 +410,7 @@ const InventoryCard: React.FC<{ item: StockItem; onClick: () => void; onDelete: 
                         <span className={`font-black text-lg leading-none ${isLow ? 'text-red-500' : 'text-indigo-600'}`}>{totalQty}</span>
                     </div>
                     <div className="text-right">
-                        <p className="text-sm font-black text-gray-900 bg-gray-100 px-2 py-1 rounded-lg">₹{item?.price || 0}</p>
+                        <p className="text-sm font-black text-gray-900 bg-gray-100 px-2 py-1 rounded-lg">₹{item.price}</p>
                     </div>
                 </div>
             </div>
@@ -426,41 +426,40 @@ const Inventory: React.FC<{ stocks: StockItem[]; onDelete: (id: string) => Promi
   const t = TRANSLATIONS[language];
 
   const filtered = useMemo(() => {
-    let result = (stocks || []).filter(s => s?.name?.toLowerCase().includes(search.toLowerCase()));
+    let result = stocks.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
     if (filterLowStock) {
-      result = result.filter(s => s?.variants?.some(v => v?.sizeStocks?.some(ss => ss?.quantity < 5)));
+      result = result.filter(s => s.variants.some(v => v.sizeStocks.some(ss => ss.quantity < 5)));
     }
     return result;
   }, [stocks, search, filterLowStock]);
 
   const handleShare = async (item: StockItem) => {
     try {
-      const variants = item?.variants || [];
-      const totalQty = variants.reduce((acc, v) => acc + (v?.sizeStocks?.reduce((s, ss) => s + (ss?.quantity || 0), 0) || 0), 0);
+      const totalQty = item.variants.reduce((acc, v) => acc + v.sizeStocks.reduce((s, ss) => s + ss.quantity, 0), 0);
       
       // Construct detailed text with ALL variants
       let detailsText = "";
-      variants.forEach((v, idx) => {
+      item.variants.forEach((v, idx) => {
           // Enhaced text for sharing colors/sleeves
-          const stocksText = (v?.sizeStocks || []).map(ss => {
-              if (ss?.color) return `${ss.color} ${ss.sleeve ? '('+ss.sleeve+')' : ''} ${ss.size && ss.size !== 'General' ? '['+ss.size+']' : ''}: ${ss.quantity}`;
-              return `${ss?.size}: ${ss?.quantity}`;
+          const stocksText = v.sizeStocks.map(ss => {
+              if (ss.color) return `${ss.color} ${ss.sleeve ? '('+ss.sleeve+')' : ''} ${ss.size && ss.size !== 'General' ? '['+ss.size+']' : ''}: ${ss.quantity}`;
+              return `${ss.size}: ${ss.quantity}`;
           }).join(', ');
           detailsText += `\n📸 Model ${idx + 1}: ${stocksText || 'No Stock'}`;
       });
 
       const text = language === 'ta' 
-        ? `🛍️ *${item?.name}*\n💰 விலை: ₹${item?.price}\n📦 வகை: ${item?.category}\n\n📊 *ஸ்டாக் விவரம்:*${detailsText}\n\n🔢 மொத்த இருப்பு: ${totalQty}`
-        : `🛍️ *${item?.name}*\n💰 Price: ₹${item?.price}\n📦 Category: ${item?.category}\n\n📊 *Stock Details:*${detailsText}\n\n🔢 Total Stock: ${totalQty}`;
+        ? `🛍️ *${item.name}*\n💰 விலை: ₹${item.price}\n📦 வகை: ${item.category}\n\n📊 *ஸ்டாக் விவரம்:*${detailsText}\n\n🔢 மொத்த இருப்பு: ${totalQty}`
+        : `🛍️ *${item.name}*\n💰 Price: ₹${item.price}\n📦 Category: ${item.category}\n\n📊 *Stock Details:*${detailsText}\n\n🔢 Total Stock: ${totalQty}`;
 
       const shareData: any = {
-        title: item?.name,
+        title: item.name,
         text: text,
       };
 
       // Collect ALL images
       const files: File[] = [];
-      const validVariants = variants.filter(v => v?.imageUrl && v.imageUrl.startsWith('data:'));
+      const validVariants = item.variants.filter(v => v.imageUrl && v.imageUrl.startsWith('data:'));
 
       // Process images (Limit to 10 to avoid browser crash/limit issues)
       const maxImages = Math.min(validVariants.length, 10);

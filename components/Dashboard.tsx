@@ -16,10 +16,10 @@ const Dashboard: React.FC<{ stocks: StockItem[]; transactions: Transaction[]; la
 
   const t = TRANSLATIONS[language];
 
-  const totalIncome = (transactions || []).filter(t => t?.type === 'INCOME').reduce((acc, curr) => acc + (curr?.amount || 0), 0);
-  const totalExpense = (transactions || []).filter(t => t?.type === 'EXPENSE').reduce((acc, curr) => acc + (curr?.amount || 0), 0);
+  const totalIncome = transactions.filter(t => t?.type === 'INCOME').reduce((acc, curr) => acc + (curr?.amount || 0), 0);
+  const totalExpense = transactions.filter(t => t?.type === 'EXPENSE').reduce((acc, curr) => acc + (curr?.amount || 0), 0);
   
-  const totalStockValue = (stocks || []).reduce((acc, curr) => {
+  const totalStockValue = stocks.reduce((acc, curr) => {
     const itemQty = curr?.variants ? curr.variants.reduce((vAcc, variant) => {
         return vAcc + (variant?.sizeStocks?.reduce((sAcc, s) => sAcc + (s?.quantity || 0), 0) || 0);
     }, 0) : 0;
@@ -29,13 +29,13 @@ const Dashboard: React.FC<{ stocks: StockItem[]; transactions: Transaction[]; la
   useEffect(() => {
     const fetchTips = async () => {
       setLoadingTips(true);
-      const newTips = await getBusinessInsights(stocks || [], transactions || []);
+      const newTips = await getBusinessInsights(stocks, transactions);
       setTips(newTips || []);
       setLoadingTips(false);
     };
     const timer = setTimeout(fetchTips, 500);
     return () => clearTimeout(timer);
-  }, [(stocks || []).length, (transactions || []).length]); 
+  }, [stocks.length, transactions.length]); 
 
   const isGuestOrOffline = !isSupabaseConfigured || user?.email?.includes('guest') || !user?.uid;
 
@@ -82,7 +82,7 @@ const Dashboard: React.FC<{ stocks: StockItem[]; transactions: Transaction[]; la
           </div>
         </div>
         <div className="text-right">
-          <p className="text-xs text-gray-400 font-medium">{(stocks || []).length} {language === 'ta' ? 'பொருட்கள்' : 'Items'}</p>
+          <p className="text-xs text-gray-400 font-medium">{stocks.length} {language === 'ta' ? 'பொருட்கள்' : 'Items'}</p>
         </div>
       </div>
 
@@ -107,7 +107,7 @@ const Dashboard: React.FC<{ stocks: StockItem[]; transactions: Transaction[]; la
       <div>
         <h3 className="font-bold text-gray-800 mb-4 tamil-font">{language === 'ta' ? 'சமீபத்திய வரவு செலவு' : 'Recent Transactions'}</h3>
         <div className="space-y-3">
-          {(transactions || []).slice(0, 5).map(txn => (
+          {transactions.slice(0, 5).map(txn => (
             <div key={txn?.id} className="bg-white p-4 rounded-xl shadow-sm flex items-center justify-between border-l-4" style={{ borderLeftColor: txn?.type === 'INCOME' ? '#10b981' : '#ef4444' }}>
               <div>
                 <p className="font-medium text-gray-800">{txn?.description || txn?.category}</p>

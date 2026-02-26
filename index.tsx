@@ -2,7 +2,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import './index.css';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -12,8 +11,8 @@ if (!rootElement) {
 // Service Worker Registration for Android Installation
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    // Attempt to register service worker with an absolute path
-    navigator.serviceWorker.register('/sw.js')
+    // Attempt to register service worker with a relative path
+    navigator.serviceWorker.register('./sw.js')
       .then(reg => console.log('Service worker registered!', reg))
       .catch(err => {
         // Suppress specific origin errors common in preview environments

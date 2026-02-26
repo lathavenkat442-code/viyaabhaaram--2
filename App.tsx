@@ -31,31 +31,12 @@ const Toast: React.FC<{ message: string; show: boolean; onClose: () => void; isE
     );
 };
 
-const base64ToBlob = (base64: string) => {
-  const byteString = atob(base64.split(',')[1]);
-  const mimeString = base64.split(',')[0].split(':')[1].split(';')[0];
-  const ab = new ArrayBuffer(byteString.length);
-  const ia = new Uint8Array(ab);
-  for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
-  return new Blob([ab], { type: mimeString });
-};
-
-const generateUUID = () => {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-        return crypto.randomUUID();
-    }
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-    });
-};
-
 const DatabaseConfigModal: React.FC<{ onClose: () => void; language: 'ta' | 'en' }> = ({ onClose, language }) => {
     const [setupUrl, setSetupUrl] = useState(localStorage.getItem('viyabaari_supabase_url') || '');
     const [setupKey, setSetupKey] = useState(localStorage.getItem('viyabaari_supabase_key') || '');
     const handleSaveConfig = (e: React.FormEvent) => {
         e.preventDefault();
-        saveSupabaseConfig(setupUrl.replace(/\/$/, '').trim(), setupKey.trim());
+        saveSupabaseConfig(setupUrl, setupKey);
     };
     return (
         <div className="fixed inset-0 bg-black/70 z-[70] flex items-center justify-center p-4 backdrop-blur-sm">
@@ -151,7 +132,6 @@ const AddStockModal: React.FC<{ onSave: (item: any, id?: string) => void; onClos
         // Process first file -> Updates CURRENT variant
         if (files[0].size <= 2 * 1024 * 1024) {
             newVariants[variantIndex].imageUrl = await readFile(files[0]);
-            newVariants[variantIndex].imageFile = files[0];
         } else {
             alert(language === 'ta' ? 'படம் 2MB-க்கு குறைவாக இருக்க வேண்டும்' : 'Image must be less than 2MB');
         }
@@ -163,7 +143,6 @@ const AddStockModal: React.FC<{ onSave: (item: any, id?: string) => void; onClos
                 newVariants.push({
                     id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
                     imageUrl: imgUrl,
-                    imageFile: files[i],
                     sizeStocks: currentTemplate.sizeStocks.map(s => ({ ...s })) // Clone sizes
                 });
             }
@@ -251,7 +230,7 @@ const AddStockModal: React.FC<{ onSave: (item: any, id?: string) => void; onClos
                    <div className="relative aspect-video bg-white rounded-3xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center overflow-hidden group">
                       {currentVariant.imageUrl ? (
                         <><img src={currentVariant.imageUrl} className="w-full h-full object-contain" alt="" />
-                        <button type="button" onClick={() => { const v = [...variants]; v[activeVariantIndex].imageUrl = ''; delete v[activeVariantIndex].imageFile; setVariants(v); }} className="absolute top-3 right-3 bg-black/50 text-white p-2 rounded-full backdrop-blur-md opacity-0 group-hover:opacity-100 transition"><Trash2 size={18} /></button></>
+                        <button type="button" onClick={() => { const v = [...variants]; v[activeVariantIndex].imageUrl = ''; setVariants(v); }} className="absolute top-3 right-3 bg-black/50 text-white p-2 rounded-full backdrop-blur-md opacity-0 group-hover:opacity-100 transition"><Trash2 size={18} /></button></>
                       ) : (
                         <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-gray-50 transition">
                            <Camera size={32} className="text-gray-300 mb-2" />
@@ -357,36 +336,10 @@ const App: React.FC = () => {
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        setUser({ 
-          uid: session.user.id, 
-          email: session.user.email || '', 
-          name: session.user.user_metadata.full_name || session.user.user_metadata.name || 'User', 
-          avatar: session.user.user_metadata.avatar_url,
-          isLoggedIn: true 
-        });
+        setUser({ uid: session.user.id, email: session.user.email || '', name: session.user.user_metadata.name || 'User', isLoggedIn: true });
       } else {
         const savedUser = localStorage.getItem('viyabaari_active_user');
-        if (savedUser) { 
-            try { 
-                const parsed = JSON.parse(savedUser);
-                if (parsed && typeof parsed === 'object') setUser(parsed);
-            } catch(e) { 
-                console.error("Corrupt user data", e);
-                localStorage.removeItem('viyabaari_active_user'); 
-            } 
-        }
-      }
-      setIsAppLoading(false);
-    }).catch(err => {
-      console.error("Session check failed", err);
-      const savedUser = localStorage.getItem('viyabaari_active_user');
-      if (savedUser) { 
-          try { 
-              const parsed = JSON.parse(savedUser);
-              if (parsed && typeof parsed === 'object') setUser(parsed);
-          } catch(e) {
-              console.error("Corrupt user data", e);
-          } 
+        if (savedUser) { try { setUser(JSON.parse(savedUser)); } catch(e) { localStorage.removeItem('viyabaari_active_user'); } }
       }
       setIsAppLoading(false);
     });
@@ -400,41 +353,9 @@ const App: React.FC = () => {
     try {
         const localS = localStorage.getItem(`viyabaari_stocks_${emailKey}`);
         const localT = localStorage.getItem(`viyabaari_txns_${emailKey}`);
-        
-        if (localS) {
-            try {
-                const parsedS = JSON.parse(localS);
-                if (Array.isArray(parsedS)) {
-                    setStocks(parsedS);
-                } else {
-                    throw new Error("Stocks data is not an array");
-                }
-            } catch (e) { 
-                console.error("Local stocks corrupt/old", e);
-                localStorage.removeItem(`viyabaari_stocks_${emailKey}`);
-                setStocks([]);
-            }
-        } else {
-            setStocks([]);
-        }
-        
-        if (localT) {
-            try {
-                const parsedT = JSON.parse(localT);
-                if (Array.isArray(parsedT)) {
-                    setTransactions(parsedT);
-                } else {
-                    throw new Error("Transactions data is not an array");
-                }
-            } catch (e) { 
-                console.error("Local txns corrupt/old", e);
-                localStorage.removeItem(`viyabaari_txns_${emailKey}`);
-                setTransactions([]);
-            }
-        } else {
-            setTransactions([]);
-        }
-    } catch (e) { console.error("Local load failed", e); }
+        if (localS) setStocks(JSON.parse(localS));
+        if (localT) setTransactions(JSON.parse(localT));
+    } catch (e) { console.error("Local load failed"); }
 
     if (user.uid && isOnline && isSupabaseConfigured) {
       if (isManualRefresh) setIsSyncing(true);
@@ -444,10 +365,7 @@ const App: React.FC = () => {
         if (sError) console.error("Fetch stocks error:", sError);
         if (sData) {
           const freshS = sData.map((r: any) => {
-              try { 
-                  const parsed = typeof r.content === 'string' ? JSON.parse(r.content) : r.content;
-                  return (parsed && typeof parsed === 'object') ? parsed : null;
-              } catch(e) { return null; }
+              try { return typeof r.content === 'string' ? JSON.parse(r.content) : r.content; } catch(e) { return null; }
           }).filter(Boolean);
           setStocks(freshS);
           try { localStorage.setItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(freshS)); } catch(e) {}
@@ -458,10 +376,7 @@ const App: React.FC = () => {
         if (tError) console.error("Fetch txns error:", tError);
         if (tData) {
           const freshT = tData.map((r: any) => {
-              try { 
-                  const parsed = typeof r.content === 'string' ? JSON.parse(r.content) : r.content;
-                  return (parsed && typeof parsed === 'object') ? parsed : null;
-              } catch(e) { return null; }
+              try { return typeof r.content === 'string' ? JSON.parse(r.content) : r.content; } catch(e) { return null; }
           }).filter(Boolean);
           freshT.sort((a: any, b: any) => (b.date || 0) - (a.date || 0));
           setTransactions(freshT);
@@ -479,96 +394,42 @@ const App: React.FC = () => {
     setIsLoading(true);
     const emailKey = getEmailKey(user.email);
     try {
-        // Process image uploads for variants
-        const variantsToProcess = itemData.variants || [];
-        const processedVariants = await Promise.all(variantsToProcess.map(async (v: StockVariant) => {
-            let finalImageUrl = v.imageUrl || '';
-            
-            if (finalImageUrl && finalImageUrl.startsWith('data:image')) {
-                try {
-                    if (isSupabaseConfigured) {
-                        const blob = base64ToBlob(finalImageUrl);
-                        
-                        const fileExt = blob.type.split('/')[1] || 'jpeg';
-                        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-                        const filePath = fileName;
-
-                        const { error: uploadError } = await supabase.storage
-                            .from('products')
-                            .upload(filePath, blob, { contentType: blob.type || 'image/jpeg', upsert: true });
-
-                        if (uploadError) {
-                            console.warn("Image upload failed, keeping base64 image URL", uploadError);
-                            // finalImageUrl = ''; 
-                        } else {
-                            const { data: { publicUrl } } = supabase.storage
-                                .from('products')
-                                .getPublicUrl(filePath);
-                            finalImageUrl = publicUrl;
-                        }
-                    }
-                } catch (e) {
-                    console.warn("Image upload exception for variant (offline?)", v.id, e);
-                    // finalImageUrl = '';
-                }
-            }
-
-            // Return variant without imageFile and with updated imageUrl
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { imageFile, ...rest } = v;
-            return { ...rest, imageUrl: finalImageUrl };
-        }));
-
-        const newItem = { ...itemData, variants: processedVariants, id: id || generateUUID(), lastUpdated: Date.now() };
+        const newItem = { ...itemData, id: id || Date.now().toString(), lastUpdated: Date.now() };
         
+        // Immediate Optimistic Update
+        setStocks(prev => {
+          const updated = id ? prev.map(s => s.id === id ? newItem : s) : [newItem, ...prev];
+          try { localStorage.setItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
+          return updated;
+        });
+
         if (user.uid && isOnline && isSupabaseConfigured) {
           // Use .select() to ensure confirmed save
           const { data, error } = await supabase.from('stock_items')
             .upsert({ id: newItem.id, user_id: user.uid, content: newItem, last_updated: newItem.lastUpdated })
             .select();
           
-          if (error) {
-              console.error("Database insert error:", error);
-              throw error;
-          }
+          if (error) throw error;
           
           // Double verify state with returned data if it's different
           if (data && data[0] && data[0].content) {
             try {
               const confirmedItem = typeof data[0].content === 'string' ? JSON.parse(data[0].content) : data[0].content;
               if (confirmedItem && confirmedItem.id) {
-                 // Update State ONLY after successful DB save
-                 setStocks(prev => {
-                    const updated = id ? prev.map(s => s.id === confirmedItem.id ? confirmedItem : s) : [confirmedItem, ...prev];
-                    try { localStorage.setItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
-                    return updated;
-                 });
+                setStocks(prev => prev.map(s => s.id === confirmedItem.id ? confirmedItem : s));
               }
             } catch (e) {
               console.error("Error parsing confirmed item", e);
-              // Fallback to newItem if parsing fails but save was successful
-              setStocks(prev => {
-                const updated = id ? prev.map(s => s.id === newItem.id ? newItem : s) : [newItem, ...prev];
-                try { localStorage.setItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
-                return updated;
-             });
             }
           }
-        } else {
-            // Offline Mode: Just update local state
-            setStocks(prev => {
-                const updated = id ? prev.map(s => s.id === newItem.id ? newItem : s) : [newItem, ...prev];
-                try { localStorage.setItem(`viyabaari_stocks_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
-                return updated;
-            });
         }
         
         setIsAddingStock(false); 
         setEditingStock(null);
         setToast({ msg: language === 'ta' ? 'சரக்கு சேமிக்கப்பட்டது!' : 'Stock Saved!', show: true });
-    } catch (err: any) { 
+    } catch (err) { 
         console.error("Save stock failed:", err);
-        setToast({ msg: err.message || 'Error saving stock', show: true, isError: true }); 
+        setToast({ msg: 'Error saving stock', show: true, isError: true }); 
     } finally { 
         setIsLoading(false); 
     }
@@ -579,8 +440,15 @@ const App: React.FC = () => {
     setIsLoading(true);
     const emailKey = getEmailKey(user.email);
     try {
-        const newTxn = { ...txnData, id: id || generateUUID(), date: date || Date.now() };
+        const newTxn = { ...txnData, id: id || Date.now().toString(), date: date || Date.now() };
         
+        // Immediate UI Update
+        setTransactions(prev => {
+          const updated = id ? prev.map(t => t.id === id ? newTxn : t) : [newTxn, ...prev];
+          try { localStorage.setItem(`viyabaari_txns_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
+          return updated;
+        });
+
         if (user.uid && isOnline && isSupabaseConfigured) {
           const { data, error } = await supabase.from('transactions')
             .upsert({ id: newTxn.id, user_id: user.uid, content: newTxn })
@@ -592,52 +460,28 @@ const App: React.FC = () => {
              try {
                const confirmedTxn = typeof data[0].content === 'string' ? JSON.parse(data[0].content) : data[0].content;
                if (confirmedTxn && confirmedTxn.id) {
-                 setTransactions(prev => {
-                    const updated = id ? prev.map(t => t.id === confirmedTxn.id ? confirmedTxn : t) : [confirmedTxn, ...prev];
-                    try { localStorage.setItem(`viyabaari_txns_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
-                    return updated;
-                 });
+                 setTransactions(prev => prev.map(t => t.id === confirmedTxn.id ? confirmedTxn : t));
                }
              } catch (e) {
                console.error("Error parsing confirmed txn", e);
-               // Fallback
-               setTransactions(prev => {
-                  const updated = id ? prev.map(t => t.id === newTxn.id ? newTxn : t) : [newTxn, ...prev];
-                  try { localStorage.setItem(`viyabaari_txns_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
-                  return updated;
-               });
              }
           }
-        } else {
-            // Offline Mode
-            setTransactions(prev => {
-              const updated = id ? prev.map(t => t.id === id ? newTxn : t) : [newTxn, ...prev];
-              try { localStorage.setItem(`viyabaari_txns_${emailKey}`, JSON.stringify(updated)); } catch(e) { console.warn("LocalStorage quota exceeded"); }
-              return updated;
-            });
         }
         
         setIsAddingTransaction(false); 
         setEditingTransaction(null);
         setToast({ msg: language === 'ta' ? 'கணக்கு சேமிக்கப்பட்டது!' : 'Entry Saved!', show: true });
-    } catch (err: any) { 
+    } catch (err) { 
         console.error("Save transaction failed:", err);
-        setToast({ msg: err.message || 'Error saving transaction', show: true, isError: true }); 
+        setToast({ msg: 'Error saving transaction', show: true, isError: true }); 
     } finally { 
         setIsLoading(false); 
     }
   };
 
   const handleDeleteStock = async (id: string) => {
-    const confirmMsg = language === 'ta' 
-        ? 'இதை நீக்க "DELETE" என டைப் செய்யவும்:' 
-        : 'Type "DELETE" to confirm deletion:';
-    
-    const input = window.prompt(confirmMsg);
-    if (input !== 'DELETE') {
-        if (input !== null) alert(language === 'ta' ? 'தவறான குறியீடு' : 'Incorrect confirmation');
-        return false;
-    }
+    const confirmMsg = language === 'ta' ? 'நிச்சயமாக இதை நீக்க வேண்டுமா?' : 'Are you sure you want to delete?';
+    if (!window.confirm(confirmMsg)) return false;
     
     if (!user) return false;
     setIsLoading(true);
@@ -690,9 +534,9 @@ const App: React.FC = () => {
   return (
     <div className="max-w-md mx-auto min-h-screen bg-slate-50 flex flex-col shadow-xl">
       <Toast message={toast.msg} show={toast.show} isError={toast.isError} onClose={() => setToast({ ...toast, show: false })} />
-      <header className="bg-indigo-600 text-white p-3 sm:p-4 sticky top-0 z-10 shadow-md flex flex-wrap gap-2 justify-between items-center">
-        <div className="flex items-center gap-2"><h1 className="text-lg sm:text-xl font-bold tamil-font truncate">{t.appName}</h1></div>
-        <div className="flex gap-2 items-center">
+      <header className="bg-indigo-600 text-white p-4 sticky top-0 z-10 shadow-md flex flex-wrap gap-2 justify-between items-center">
+        <div className="flex items-center gap-2"><h1 className="text-xl font-bold tamil-font truncate">{t.appName}</h1></div>
+        <div className="flex gap-3 items-center">
             {isOnline && user.uid && <button onClick={() => fetchData(true)} className={`p-2 bg-white/10 hover:bg-white/20 rounded-full transition ${isSyncing ? 'animate-spin' : ''}`}><RefreshCw size={20} /></button>}
             <button onClick={() => { setEditingStock(null); setIsAddingStock(true); }} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition"><PlusCircle size={20}/></button>
             <button onClick={() => { setEditingTransaction(null); setIsAddingTransaction(true); }} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition"><ArrowLeftRight size={20}/></button>
@@ -704,9 +548,12 @@ const App: React.FC = () => {
         {activeTab === 'accounts' && <Accounting transactions={transactions} language={language} onEdit={t => { setEditingTransaction(t); setIsAddingTransaction(true); }} onClear={handleClearTransactions} />}
         {activeTab === 'profile' && <Profile user={user} updateUser={setUser} stocks={stocks} transactions={transactions} onLogout={async () => { 
             await supabase.auth.signOut(); 
-            localStorage.clear();
-            sessionStorage.clear();
             setUser(null); 
+            localStorage.removeItem('viyabaari_active_user'); 
+            // Clear any other session data if needed
+            sessionStorage.clear();
+            // Force reload to clear any in-memory state
+            window.location.reload(); 
         }} onRestore={d => {}} language={language} onLanguageChange={(l) => { setLanguage(l); localStorage.setItem('viyabaari_lang', l); }} onClearTransactions={handleClearTransactions} onResetApp={() => {}} onSetupServer={() => setShowDatabaseConfig(true)} />}
       </main>
       {showDatabaseConfig && <DatabaseConfigModal onClose={() => setShowDatabaseConfig(false)} language={language} />}
@@ -741,7 +588,7 @@ const AuthScreen: React.FC<{ onLogin: (u: User) => void; language: 'ta' | 'en'; 
         } else if (mode === 'LOGIN') {
            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
            if (error) throw error;
-           if (data.user) onLogin({ uid: data.user.id, email: data.user.email || '', name: data.user.user_metadata.full_name || data.user.user_metadata.name || 'User', avatar: data.user.user_metadata.avatar_url, isLoggedIn: true });
+           if (data.user) onLogin({ uid: data.user.id, email: data.user.email || '', name: data.user.user_metadata.name || 'User', isLoggedIn: true });
         } else {
            const { error } = await supabase.auth.resetPasswordForEmail(email);
            if (error) throw error;
